@@ -1,0 +1,8 @@
+
+This library depends on libtpproto-py.
+
+This library contains all the common stuff an advanced client would want to do such as:
+	* Download the whole universe efficently
+	* Store/Restore the universe from disk
+	* 
+	

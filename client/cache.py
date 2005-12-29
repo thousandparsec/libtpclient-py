@@ -193,7 +193,7 @@ class Cache(object):
 	def load(self):
 		"""\
 		"""
-		f = open(self.file, 'r')
+		f = open(self.file, 'rb')
 		
 		# Read in the version number
 		v, = struct.unpack('!I', f.read(4))
@@ -213,7 +213,9 @@ class Cache(object):
 				break
 
 			p = Header(d)
-			p.process(f.read(p.length))
+
+			d = f.read(p.length)
+			p.process(d)
 
 			# Descriptions
 			if isinstance(p, Description):
@@ -239,7 +241,7 @@ class Cache(object):
 		pprint.pprint(self.__dict__)
 		
 		# Save the cache
-		f = open(self.file, 'w')
+		f = open(self.file, 'wb')
 		f.write(struct.pack('!I', self.version))
 
 		p = copy.copy(self.__dict__)

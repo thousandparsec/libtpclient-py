@@ -89,7 +89,24 @@ class Cache(object):
 	# How we can update the Cache
 	actions = ("create", "remove", "change")
 	compound = ("orders", "messages")
-	
+
+	def key(server, username):
+		key = server
+
+		p = ['tp://', 'tps://', 'http://', 'https://']
+		found = False
+		for p in p:
+			if key.startswith(p):
+				found = True
+				break
+		if not found:
+			key = 'tp://' + key
+		if key.find('@') == -1:
+			p, s = key.split('//', 1)
+			key = "%s//%s@%s" % (p, username, s)
+		return key
+	key = staticmethod(key)	
+
 	def __init__(self, key, configdir=None, new=False):
 		"""\
 		It is important that key constructed the following way,

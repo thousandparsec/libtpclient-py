@@ -445,4 +445,9 @@ class Cache(object):
 		callback("Getting all other objects...", mode="remaining")
 		get_all("Resources", connection.get_resource_ids, connection.get_resources, 
 					self.resources, constants.FEATURE_ORDERED_RESOURCE)
+		
+		#get_all("Players", connection.get_player_ids, connection.get_players, 
+		#			self.players, constants.FEATURE_ORDERED_PLAYERS)
+		self.players[0] = connection.get_players(0)[0]
+		print self.players
 		return

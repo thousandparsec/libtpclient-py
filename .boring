@@ -32,3 +32,4 @@
 \#
 \.cvsignore$
 (^|/)Thumbs\.db$
+^netlib$

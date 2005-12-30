@@ -429,7 +429,7 @@ class Cache(object):
 				callback("Got %s with id of %i (last modified at %s)..." % (name, id, time), add=1)
 
 			print name,
-			pprint.pprint(self.boards.items())
+			pprint.pprint(cache.items())
 
 		callback("Getting design objects...", mode="designs")
 		get_all("Categories", connection.get_category_ids, connection.get_categories, 

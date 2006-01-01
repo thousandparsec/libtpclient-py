@@ -30,16 +30,8 @@ class Application(object):
 		"""\
 		Set the application running.
 		"""
-		self.gui.Show(self.gui.connectto)
-
 		self.network.start()
 		self.gui.start()
-
-	def ConfigDisplay(self):
-		"""\
-		Pop-up the configuration window.
-		"""
-		self.gui.ConfigDisplay()
 
 	def ConfigSave(self):
 		"""\

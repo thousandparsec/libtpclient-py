@@ -143,7 +143,7 @@ class NetworkThread(threading.Thread):
 			self.application.Post(self.NetworkFailureEvent(s))
 			return
 
-		callback("Logining In")
+		callback("Logging In")
 		if failed(self.connection.login(username, password)):
 			s  = _("The client connected to the host but could not login because the username of password was incorrect.\n")
 			s += _("This could be because you are connecting to the wrong server or mistyped the username or password.\n")

@@ -8,6 +8,7 @@ from tp.netlib import Connection, failed
 
 from cache import Cache
 from config import load_data, save_data
+from version import version
 
 class Application(object):
 	"""
@@ -120,7 +121,7 @@ class NetworkThread(threading.Thread):
 		if hasattr(self, func):
 			getattr(self, func)(event)
 
-	def ConnectTo(self, host, username, password, debug=False, callback=None):
+	def ConnectTo(self, host, username, password, debug=False, callback=None, cs="unknown"):
 		"""\
 		Connect to a given host using a certain username and password.
 		"""
@@ -136,7 +137,7 @@ class NetworkThread(threading.Thread):
 			return
 			
 		callback("Looking for Thousand Parsec Server...")
-		if failed(self.connection.connect()):
+		if failed(self.connection.connect(("libtpclient-py/%i.%i.%i " % version)+cs)):
 			s  = _("The client connected to the host but it did not appear to be a Thousand Parsec server.\n")
 			s += _("This could be because the server is down or the connection details are incorrect.\n")
 			self.application.Post(self.NetworkFailureEvent(s))

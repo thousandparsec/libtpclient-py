@@ -32,7 +32,7 @@
 \#
 \.cvsignore$
 (^|/)Thumbs\.db$
-^netlib$
-^build$
-^dist$
-^MANIFEST$
+(^|/)netlib$
+(^|/)build$
+(^|/)dist$
+(^|/)MANIFEST$

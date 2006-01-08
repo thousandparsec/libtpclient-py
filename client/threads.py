@@ -1,8 +1,10 @@
 
 import pprint
 import socket
+import sys
 import time
 import threading
+import traceback
 
 from tp.netlib import Connection, failed
 
@@ -168,6 +170,7 @@ class NetworkThread(threading.Thread):
 						raise IOError("Unable to remove the order...")
 				
 				if evt.action in ("create", "change"):
+					# FIXME: Maybe an insert_order should return the order object not okay/fail
 					if failed(self.connection.insert_order(evt.id, evt.slot, evt.change)):
 						raise IOError("Unable to insert the order...")
 
@@ -181,14 +184,25 @@ class NetworkThread(threading.Thread):
 					evt.change = o
 			elif evt.what == "messages" and evt.action == "remove":
 				if failed(self.connection.remove_messages(evt.id, evt.slot)):
-					raise IOError("Unable to remove the order...")
+					raise IOError("Unable to remove the message...")
+			elif evt.what == "designs":
+				if evt.action == "remove":
+					if failed(self.connection.remove_design(evt.change)):
+						raise IOError("Unable to remove the design...")
+				if evt.action == "change":
+					if failed(self.connection.change_design(evt.change)):
+						raise IOError("Unable to change the design...")
+				if evt.action == "add":
+					if failed(self.connection.add_design(evt.change)):
+						raise IOError("Unable to add the design...")
 			else:
 				raise ValueError("Can't deal with that yet!")
 			self.application.cache.apply(evt)
 			self.application.Post(evt)
 
 		except Exception, e:
-			print e
+			type, val, tb = sys.exc_info()
+			sys.stderr.write("".join(traceback.format_exception(type, val, tb)))
 			self.application.Post(self.NetworkFailureEvent(e))
 			"There where the following errors when trying to send changes to the server:"
 			"The following updates could not be made:"

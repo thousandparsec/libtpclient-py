@@ -38,7 +38,6 @@ class DesignCalculator:
 		Calculates all the properties on a design. 
 		Returns the Interpretor (used to create the design and the actual design).
 		"""
-		
 		i = scheme.make_interpreter()
 
 		# Step 1 -------------------------------------
@@ -100,9 +99,11 @@ class DesignCalculator:
 	
 	def check(self, i, design):
 		"""\
-		check() -> Interpretor, Design
+		check() -> Valid, Feedback
 
 		Checks the requirements of a design.
+
+		Returns if the design is valid and a string which has human readable feedback.
 		"""
 		total_okay = True
 		total_feedback = []
@@ -150,5 +151,11 @@ class DesignCalculator:
 
 		return total_okay, "\n".join(total_feedback)
 
-	def apply(self, details):
+	def apply(self, details, okay, feedback):
+		"""\
+		Apply the results returned from calculate/check to the design object.
+		"""
 		self.design.properties = [(x[0], x[2]) for x in details.values()]
+		self.design.feedback = feedback
+
+		self.design.used = (-1, 0)[okay]

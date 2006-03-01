@@ -188,7 +188,7 @@ class NetworkThread(threading.Thread):
 			elif evt.what == "designs":
 				# FIXME: Assuming that these should succeed is BAD!
 				if evt.action == "remove":
-					if failed(self.connection.remove_design(evt.change)):
+					if failed(self.connection.remove_designs(evt.change)):
 						raise IOError("Unable to remove the design...")
 				if evt.action == "change":
 					if failed(self.connection.change_design(evt.change)):
@@ -197,6 +197,21 @@ class NetworkThread(threading.Thread):
 					result = self.connection.insert_design(evt.change)
 					if failed(result):
 						raise IOError("Unable to add the design...")
+					
+					# Need to update the event with the new ID of the design.
+					evt.id = result.id
+			elif evt.what == "categories":
+				# FIXME: Assuming that these should succeed is BAD!
+				if evt.action == "remove":
+					if failed(self.connection.remove_categories(evt.change)):
+						raise IOError("Unable to remove the category...")
+				if evt.action == "change":
+					if failed(self.connection.change_category(evt.change)):
+						raise IOError("Unable to change the category...")
+				if evt.action == "create":
+					result = self.connection.insert_category(evt.change)
+					if failed(result):
+						raise IOError("Unable to add the category...")
 					
 					# Need to update the event with the new ID of the design.
 					evt.id = result.id

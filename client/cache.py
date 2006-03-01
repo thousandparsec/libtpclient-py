@@ -167,6 +167,10 @@ class Cache(object):
 		self.resources		= ChangeDict()
 
 	def apply(self, evt):
+		"""\
+		Given a CacheDirtyEvent it applies the changes to the cache.
+		It then mutates the event into a CacheUpdateEvent.
+		"""
 		if not isinstance(evt, self.CacheDirtyEvent):
 			raise TypeError("I can only accept CacheDirtyEvents")
 		

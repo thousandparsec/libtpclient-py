@@ -12,31 +12,57 @@ class DesignCalculator:
 		self.cache = cache
 		self.design = design
 
+		self.__dirty = True
+
 	def rank(self):
-		if len(self.design.components) <= 0:
-			return {}
+		if self.__dirty:
+			ranks = {}
+			for component_id, number in self.design.components:
+				component = self.cache.components[component_id]
+	
+				for property_id, value in component.properties:
+					property = self.cache.properties[property_id]
+					
+					if not ranks.has_key(property.rank):
+						ranks[property.rank] = []
+	
+					if not property_id in ranks[property.rank]:
+						ranks[property.rank].append(property_id)
 
-		ranks = {}
-		for component_id, number in self.design.components:
-			component = self.cache.components[component_id]
+			self.__ranks = ranks
+		return self.__ranks
 
-			for property_id, value in component.properties:
-				property = self.cache.properties[property_id]
-				
-				if not ranks.has_key(property.rank):
-					ranks[property.rank] = []
+	def change(self, component, amount):
+		"""\
+		change(component, amount) -> None
+		
+		Changes the current design by adding/subtracting the certain amount of a component.
+		"""
+		self.__dirty = True
 
-				if not property_id in ranks[property.rank]:
-					ranks[property.rank].append(property_id)
+		i = 0
+		while True:
+			# FIXME: There should be a better way to do this.
+			if i >= len(self.design.components):
+				self.design.components.append([component.id, amount])
+				break
 
-		return ranks
+			if self.design.components[i][0] == component.id:
+				if isinstance(self.design.components[i], tuple):
+					self.design.components[i] = list(self.design.components[i])
+				self.design.components[i][1] += amount
+	
+				if self.design.components[i][1] < 0:
+					del self.design.components[i]
+				break
+			i += 1
 
 	def calculate(self):
 		"""\
-		calculate() -> Interpretor, Design
+		calculate() -> Interpretor, Properties
 
 		Calculates all the properties on a design. 
-		Returns the Interpretor (used to create the design and the actual design).
+		Returns the Interpretor and the object with the Properties.
 		"""
 		i = scheme.make_interpreter()
 
@@ -45,12 +71,12 @@ class DesignCalculator:
 		print "The order I need to calculate stuff in is,", ranks
 
 		# Step 2 -------------------------------------
-		# The design object
-		class Design(dict):
+		# The object which will store the properties calculated
+		class Properties(dict):
 			pass
 
-		design = Design()
-		scheme.environment.defineVariable(scheme.symbol.Symbol('design'), design, i.get_environment())
+		properties = Properties()
+		scheme.environment.defineVariable(scheme.symbol.Symbol('design'), properties, i.get_environment())
 
 		# Step 3 -------------------------------------
 		for rank in ranks.keys():
@@ -87,23 +113,23 @@ class DesignCalculator:
 				value, display = scheme.pair.car(total), scheme.pair.cdr(total)
 
 				print "In total I got '%i' which will be displayed as '%s'" % (value, display)
-				design[property.name] = (property_id, value, display)
+				properties[property.name] = (property_id, value, display)
 
-				def t(design, name=property.name):
-					return design[name][1]
+				def t(properties, name=property.name):
+					return properties[name][1]
 				
 				i.install_function('designtype.'+property.name, t)
 				
-		print "The final properties we have are", design.items()
-		return i, design
+		print "The final properties we have are", properties.items()
+		return i, properties
 	
-	def check(self, i, design):
+	def check(self, i, properties):
 		"""\
-		check() -> Valid, Feedback
+		check(Interperator, Properties) -> Valid, Feedback
 
 		Checks the requirements of a design.
 
-		Returns if the design is valid and a string which has human readable feedback.
+		Returns if the properties are valid and a string which has human readable feedback.
 		"""
 		total_okay = True
 		total_feedback = []
@@ -151,11 +177,18 @@ class DesignCalculator:
 
 		return total_okay, "\n".join(total_feedback)
 
-	def apply(self, details, okay, feedback):
+	def apply(self, properties, okay, feedback):
 		"""\
+		apply(Properties, 
 		Apply the results returned from calculate/check to the design object.
 		"""
-		self.design.properties = [(x[0], x[2]) for x in details.values()]
+		self.design.properties = [(x[0], x[2]) for x in properties.values()]
 		self.design.feedback = feedback
 
 		self.design.used = (-1, 0)[okay]
+
+	def update(self):
+		if self.__dirty:
+			i, p = self.calculate()
+			okay, reason = self.check(i, p)
+			self.apply(p, okay, reason)

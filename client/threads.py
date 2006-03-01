@@ -186,15 +186,20 @@ class NetworkThread(threading.Thread):
 				if failed(self.connection.remove_messages(evt.id, evt.slot)):
 					raise IOError("Unable to remove the message...")
 			elif evt.what == "designs":
+				# FIXME: Assuming that these should succeed is BAD!
 				if evt.action == "remove":
 					if failed(self.connection.remove_design(evt.change)):
 						raise IOError("Unable to remove the design...")
 				if evt.action == "change":
 					if failed(self.connection.change_design(evt.change)):
 						raise IOError("Unable to change the design...")
-				if evt.action == "add":
-					if failed(self.connection.add_design(evt.change)):
+				if evt.action == "create":
+					result = self.connection.insert_design(evt.change)
+					if failed(result):
 						raise IOError("Unable to add the design...")
+					
+					# Need to update the event with the new ID of the design.
+					evt.id = result.id
 			else:
 				raise ValueError("Can't deal with that yet!")
 			self.application.cache.apply(evt)

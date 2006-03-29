@@ -136,24 +136,26 @@ class NetworkThread(threading.Thread):
 			s  = _("The client was unable to connect to the host.\n")
 			s += _("This could be because the server is down or there is a problem with the network.\n")
 			self.application.Post(self.NetworkFailureEvent(s))
-			return
+			return False
 			
 		callback("Looking for Thousand Parsec Server...")
 		if failed(self.connection.connect(("libtpclient-py/%i.%i.%i " % version)+cs)):
 			s  = _("The client connected to the host but it did not appear to be a Thousand Parsec server.\n")
 			s += _("This could be because the server is down or the connection details are incorrect.\n")
 			self.application.Post(self.NetworkFailureEvent(s))
-			return
+			return False
 
 		callback("Logging In")
 		if failed(self.connection.login(username, password)):
+			print "Logining failed!"
 			s  = _("The client connected to the host but could not login because the username of password was incorrect.\n")
 			s += _("This could be because you are connecting to the wrong server or mistyped the username or password.\n")
 			self.application.Post(self.NetworkFailureEvent(s))
-			return
+			return False
 
 		# Create a new cache
 		self.application.cache = Cache(Cache.key(host, username))
+		return True
 
 	def CacheUpdate(self, callback):
 		self.application.cache.update(self.connection, callback)

@@ -51,8 +51,6 @@ class Application(object):
 		if config is None:
 			config = {}
 	
-		print "Loading the config...\n" + pprint.pformat(config)
-		
 		self.gui.ConfigLoad(config)
 
 	def Post(self, event):

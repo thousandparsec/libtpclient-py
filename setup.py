@@ -17,7 +17,8 @@ setup(name="libtpclient-py",
 	packages=[ \
 		'tp',
 		'tp.client',
-		],
+		'tp.client.pyscheme',
+	],
 	package_dir = {'tp': ''}
 )
 

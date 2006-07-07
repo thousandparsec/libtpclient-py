@@ -107,6 +107,23 @@ class Cache(object):
 		return key
 	key = staticmethod(key)	
 
+	def configkey(key):
+		key = base64.encodestring(key)[:-2]
+		return key
+	configkey = staticmethod(configkey)
+
+	def configdir():
+		dirs = [("APPDATA", "Thousand Parsec"), ("HOME", ".tp"), (".", "var")]
+		for base, extra in dirs:
+			if base in os.environ:
+				base = os.environ[base]
+				break
+			elif base != ".":
+				continue
+			
+		return os.path.join(base, extra)
+	configdir = staticmethod(configdir)
+
 	def __init__(self, key, configdir=None, new=False):
 		"""\
 		It is important that key constructed the following way,
@@ -116,31 +133,23 @@ class Cache(object):
 		Everything must be there, even if the port is the default.
 		"""
 		if configdir == None:
-			dirs = [("APPDATA", "Thousand Parsec"), ("HOME", ".tp"), (".", "var")]
-			for base, extra in dirs:
-				if base in os.environ:
-					base = os.environ[base]
-					break
-				elif base != ".":
-					continue
-			
-			configdir = os.path.join(base, extra)
+			configdir = Cache.configdir()
 
 		if not os.path.exists(configdir):
 			os.mkdir(configdir)
 
-		key = base64.encodestring(key)[:-2]
+		key = Cache.configkey(key)
 
 		self.file = os.path.join(configdir, "cache.%s" % (key,))
 		if os.path.exists(self.file) and not new:
 			# Load the previously cached status
 			print "Loading previous saved data (from %s)." % (self.file,)
-#			try:
-			self.load()
-#				return
-#			except (IOError, EOFError), e:
-#				print e
-#				print "Unable to load the data, saved cache must be corrupt."
+			try:
+				self.load()
+				return
+			except (IOError, EOFError), e:
+				print e
+				print "Unable to load the data, saved cache must be corrupt."
 		print "Creating the Cache fresh (%s)." % (self.file,)
 		self.new()
 	
@@ -237,12 +246,12 @@ class Cache(object):
 			if not self.orders.has_key(id):
 				self.orders[id] = (self.objects.times[id], [])
 		
-		pprint.pprint(self.__dict__)
+		#pprint.pprint(self.__dict__)
 
 	def save(self):
 		"""\
 		"""
-		pprint.pprint(self.__dict__)
+		#pprint.pprint(self.__dict__)
 		
 		# Save the cache
 		f = open(self.file, 'wb')
@@ -254,7 +263,7 @@ class Cache(object):
 
 		# Save each dynamic order description
 		for orderdesc in OrderDescs().values():
-			print orderdesc, type(orderdesc), issubclass(orderdesc, DynamicBaseOrder)
+			#print orderdesc, type(orderdesc), issubclass(orderdesc, DynamicBaseOrder)
 			if issubclass(orderdesc, DynamicBaseOrder):
 				f.write(str(orderdesc.packet))
 
@@ -339,10 +348,10 @@ class Cache(object):
 			
 			callback("Got object with id of %i (last modified at %s)..." % (id, time), add=1)
 
-		print "Objects",
-		pprint.pprint(self.objects.items())
+		#print "Objects",
+		#pprint.pprint(self.objects.items())
 
-		print "Building two way Universe Tree for speed"
+		#print "Building two way Universe Tree for speed"
 		def build(object, parent=None, self=self):
 			if parent:
 				object.parent = parent.id
@@ -386,8 +395,8 @@ class Cache(object):
 				
 			callback("Got board with id of %i (last modified at %s)..." % (id, time), add=1)
 
-		print "Boards",
-		pprint.pprint(self.boards.items())
+		#print "Boards",
+		#pprint.pprint(self.boards.items())
 
 		# Get all the order descriptions
 		# -----------------------------------------------------------------------------------
@@ -432,8 +441,8 @@ class Cache(object):
 				
 				callback("Got %s with id of %i (last modified at %s)..." % (name, id, time), add=1)
 
-			print name,
-			pprint.pprint(cache.items())
+			#print name,
+			#pprint.pprint(cache.items())
 
 		callback("Getting design objects...", mode="designs")
 		get_all("Categories", connection.get_category_ids, connection.get_categories, 
@@ -455,5 +464,5 @@ class Cache(object):
 		#get_all("Players", connection.get_player_ids, connection.get_players, 
 		#			self.players, constants.FEATURE_ORDERED_PLAYERS)
 		self.players[0] = connection.get_players(0)[0]
-		print self.players
+		#print self.players
 		return

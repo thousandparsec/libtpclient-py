@@ -85,8 +85,9 @@ class Media:
 		Is a file ready to be used?
 		"""
 		media_local = os.path.join(self.dir, file)
-		if os.path.exists(media_local):
-			if timestamp <= eval(open(media_local + ".timestamp").read()):
+		media_local_stamp = media_local + ".timestamp"
+		if os.path.exists(media_local) and os.path.exists(media_local_stamp):
+			if timestamp <= eval(open(media_local_stamp).read()):
 				return media_local
 
 	def getfile(self, file, timestamp=None, callback=None):

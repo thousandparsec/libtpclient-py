@@ -283,6 +283,12 @@ class MediaThread(threading.Thread):
 		"""
 		pass
 
+	class MediaDownloadAbortEvent(MediaDownload):
+		"""\
+		Posted when a piece of media started downloading but was canceled.
+		"""
+		pass
+
 	class MediaUpdateEvent:
 		"""\
 		Posted when the media was download.
@@ -298,6 +304,7 @@ class MediaThread(threading.Thread):
 		self.exit = False
 
 		self.tocall = []
+		self.tostop = []
 	
 	def run(self):
 		while not self.exit:
@@ -310,6 +317,9 @@ class MediaThread(threading.Thread):
 			print "Media.Run", method
 			try:
 				method(*args, **kw)
+			except self.MediaDownloadAbortEvent, e:
+				print "Aborting", e
+				self.application.Post(e)
 			except IOError, e:
 				s  = _("There was an unknown network error.\n")
 				s += _("Any changes since last save have been lost.\n")
@@ -336,12 +346,17 @@ class MediaThread(threading.Thread):
 	def GetFileGoing(self, file, timestamp):
 		"""\
 		"""
-		def callback(blocknum, blocksize, size, self=self, file=file):
+		print "GetFileGoing", file, timestamp
+		def callback(blocknum, blocksize, size, self=self, file=file, tostop=self.tostop):
 			progress = min(blocknum*blocksize, size)
 			if blocknum == 0:
 				self.application.Post(self.MediaDownloadStartEvent(file, progress, size))
 
 			self.application.Post(self.MediaDownloadProgressEvent(file, progress, size))
+
+			if file in tostop:
+				tosetop.remove(file)
+				raise self.MediaDownloadAbortEvent(file)
 
 		localfile = self.cache.getfile(file, timestamp, callback=callback)
 		self.application.Post(self.MediaDownloadDoneEvent(file, localfile=localfile))
@@ -351,6 +366,7 @@ class MediaThread(threading.Thread):
 		Get a File, return directly or start a download.
 		"""
 		if self.cache.ready(file, timestamp):
+			print "File has already been downloaded.", file
 			return self.cache.getfile(file, timestamp)
 		self.Call(self.GetFileGoing, file, timestamp)
 

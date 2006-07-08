@@ -283,7 +283,7 @@ class MediaThread(threading.Thread):
 		"""
 		pass
 
-	class MediaDownloadAbortEvent(MediaDownload):
+	class MediaDownloadAbortEvent(Exception, MediaDownload):
 		"""\
 		Posted when a piece of media started downloading but was canceled.
 		"""
@@ -343,6 +343,9 @@ class MediaThread(threading.Thread):
 		if hasattr(self, func):
 			getattr(self, func)(event)
 
+	def StopFile(self, file):
+		self.tostop.append(file)
+
 	def GetFileGoing(self, file, timestamp):
 		"""\
 		"""
@@ -355,7 +358,8 @@ class MediaThread(threading.Thread):
 			self.application.Post(self.MediaDownloadProgressEvent(file, progress, size))
 
 			if file in tostop:
-				tosetop.remove(file)
+				print "Stopping ", file
+				tostop.remove(file)
 				raise self.MediaDownloadAbortEvent(file)
 
 		localfile = self.cache.getfile(file, timestamp, callback=callback)

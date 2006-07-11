@@ -67,8 +67,9 @@ class Media:
 		self.connection.request("HEAD", media_remote)
 			
 		headers = {}
-		for key, value in self.connection.getresponse().getheaders():
-			headers[key] = value
+		headers['last-modified'] = self.connection.getresponse().getheader('last-modified')
+#		for key, value in self.connection.getresponse().getheaders():
+#			headers[key] = value
 
 		remotedate = time.strptime(headers['last-modified'], "%a, %d %b %Y %H:%M:%S %Z")[0:5]
 		localdate = eval(open(media_local + ".timestamp").read())

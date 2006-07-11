@@ -83,11 +83,49 @@ class Application(object):
 		"""
 		Exit the program.
 		"""
-		self.network.Call(self.network.Cleanup)
-		self.media.Call(self.media.Cleanup)
-		self.gui.Call(self.gui.Cleanup)
+		if hasattr(self, "closing"):
+			return
+		self.closing = True
 
-class NetworkThread(threading.Thread):
+		self.network.Cleanup()
+		self.media.Cleanup()
+		self.gui.Cleanup()
+
+class CallThread(threading.Thread):
+	def __init__(self):
+		threading.Thread.__init__(self)
+		self.exit = False
+		self.tocall = []
+	
+	def run(self):
+		while not self.exit:
+			if len(self.tocall) <= 0:
+				self.idle()
+				continue
+			
+			method, args, kw = self.tocall.pop(0)
+			try:
+				method(*args, **kw)
+			except Exception, e:
+				self.error(e)
+
+	def idle(self):
+		time.sleep(0.1)
+
+	def error(self, error):
+		pass
+
+	def Cleanup(self):
+		del self.tocall[:]
+		self.exit = True
+
+	def Call(self, method, *args, **kw):
+		"""\
+		Call a method in this thread.
+		"""
+		self.tocall.append((method, args, kw))
+
+class NetworkThread(CallThread):
 	## These are network events
 	class NetworkFailureEvent(Exception):
 		"""\
@@ -98,41 +136,20 @@ class NetworkThread(threading.Thread):
 	######################################
 
 	def __init__(self, application):
-		threading.Thread.__init__(self)
-		self.application = application
-		self.exit = False
+		CallThread.__init__(self)
 
-		self.tocall = []
+		self.application = application
 		self.connection = Connection()
 	
-	def run(self):
-		print "Network.Run"
-		while not self.exit:
-			if len(self.tocall) <= 0:
-				if hasattr(time, 'sleep'):
-					time.sleep(0.1)
-				continue
-			
-			method, args, kw = self.tocall.pop(0)
-			print "Network", method
-			try:
-				method(*args, **kw)
-			except (IOError, socket.error), e:
-				s  = _("There was an unknown network error.\n")
-				s += _("Any changes since last save have been lost.\n")
-				if getattr(self.connection, 'debug', False):
-					s += _("A traceback of the error was printed to the console.\n")
-					print e
-				self.application.Post(self.NetworkFailureEvent(s))
-
-	def Cleanup(self):
-		self.exit = True
-
-	def Call(self, method, *args, **kw):
-		"""\
-		Call a method in this thread.
-		"""
-		self.tocall.append((method, args, kw))
+	def error(self, error):
+		if isinstance(error, (IOError, socket.error)):
+			s  = _("There was an unknown network error.\n")
+			s += _("Any changes since last save have been lost.\n")
+			if getattr(self.connection, 'debug', False):
+				s += _("A traceback of the error was printed to the console.\n")
+				print e
+			self.application.Post(self.NetworkFailureEvent(s))
+		raise
 
 	def Post(self, event):
 		"""
@@ -250,7 +267,7 @@ class NetworkThread(threading.Thread):
 			"The following updates could not be made:"
 
 
-class MediaThread(threading.Thread):
+class MediaThread(CallThread):
 	## These are network events
 	class MediaFailureEvent(Exception):
 		"""\
@@ -298,72 +315,63 @@ class MediaThread(threading.Thread):
 
 	######################################
 	def __init__(self, application):
-		print "Media.__init__"
-		threading.Thread.__init__(self)
-		self.application = application
-		self.exit = False
+		CallThread.__init__(self)
 
-		self.tocall = []
+		print "Media.__init__"
+		self.application = application
+
+		self.todownload = {}
 		self.tostop = []
 	
-	def run(self):
-		while not self.exit:
-			if len(self.tocall) <= 0:
-				if hasattr(time, 'sleep'):
-					time.sleep(0.1)
-				continue
-			
-			method, args, kw = self.tocall.pop(0)
-			print "Media.Run", method
-			try:
-				method(*args, **kw)
-			except self.MediaDownloadAbortEvent, e:
-				print "Aborting", e
-				self.application.Post(e)
-			except IOError, e:
-				s  = _("There was an unknown network error.\n")
-				s += _("Any changes since last save have been lost.\n")
-				self.application.Post(self.MediaFailureEvent(s))
+	def idle(self):
+		if len(self.todownload) <= 0:
+			CallThread.idle(self)
+			return
 
-	def Cleanup(self):
-		self.exit = True
-
-	def Call(self, method, *args, **kw):
-		"""\
-		Call a method in this thread.
-		"""
-		self.tocall.append((method, args, kw))
-
-	def Post(self, event):
-		"""
-		Post an Event the current window.
-		"""
-		func = 'On' + event.__class__.__name__[:-5]
-		print "Posting %s to %s" % (event, func)
-		if hasattr(self, func):
-			getattr(self, func)(event)
-
-	def StopFile(self, file):
-		self.tostop.append(file)
-
-	def GetFileGoing(self, file, timestamp):
-		"""\
-		"""
-		print "GetFileGoing", file, timestamp
+		file, timestamp = self.todownload.iteritems().next()
+		print "Media.Downloading Starting", file, timestamp
 		def callback(blocknum, blocksize, size, self=self, file=file, tostop=self.tostop):
 			progress = min(blocknum*blocksize, size)
 			if blocknum == 0:
 				self.application.Post(self.MediaDownloadStartEvent(file, progress, size))
-
+	
 			self.application.Post(self.MediaDownloadProgressEvent(file, progress, size))
-
+	
 			if file in tostop:
-				print "Stopping ", file
 				tostop.remove(file)
 				raise self.MediaDownloadAbortEvent(file)
 
-		localfile = self.cache.getfile(file, timestamp, callback=callback)
-		self.application.Post(self.MediaDownloadDoneEvent(file, localfile=localfile))
+		try:
+			localfile = self.cache.getfile(file, timestamp, callback=callback)
+			print "Media Downloading Finished", file
+			self.application.Post(self.MediaDownloadDoneEvent(file, localfile=localfile))
+		except self.MediaDownloadAbortEvent, e:
+			print "Media Downloading Aborting", e
+			self.application.Post(e)
+
+		del self.todownload[file]
+
+	def error(self, error):
+		if isinstance(error, (IOError, socket.error)):
+			s  = _("There was an unknown network error.\n")
+			s += _("Any changes since last save have been lost.\n")
+			self.application.Post(self.MediaFailureEvent(s))
+		raise
+
+	def Cleanup(self):
+		print "Cleanup", self, self.todownload
+		for file in self.todownload:
+			self.tostop.append(file)
+		CallThread.Cleanup(self)
+
+	def Post(self, event):
+		"""
+		Post an Event the current thread.
+		"""
+		pass
+
+	def StopFile(self, file):
+		self.tostop.append(file)
 
 	def GetFile(self, file, timestamp):
 		"""\
@@ -372,7 +380,7 @@ class MediaThread(threading.Thread):
 		if self.cache.ready(file, timestamp):
 			print "File has already been downloaded.", file
 			return self.cache.getfile(file, timestamp)
-		self.Call(self.GetFileGoing, file, timestamp)
+		self.todownload[file] = timestamp
 
 	def ConnectTo(self, host, username, debug=False):
 		"""\
@@ -382,5 +390,4 @@ class MediaThread(threading.Thread):
 
 		files = self.cache.getpossible(['png', 'gif'])
 		self.application.Post(self.MediaUpdateEvent(files))
-
 

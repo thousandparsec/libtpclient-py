@@ -6,6 +6,9 @@ import base64
 import pprint
 import struct
 import cPickle as pickle
+from datetime import datetime
+def df(time):
+	return datetime.utcfromtimestamp(time).strftime('%c')
 
 # Other library imports
 from tp.netlib import Connection, failed, constants
@@ -318,7 +321,7 @@ class Cache(object):
 		iter = connection.get_object_ids(iter=True)
 		
 		for id, time in iter:
-			callback("Getting object with id of %i (last modified at %s)..." % (id, time), of=iter.total)
+			callback("Getting object with id of %i (last modified at %s)..." % (id, df(time)), of=iter.total)
 
 			if not self.objects.has_key(id) or time > self.objects.times[id]:
 				object = connection.get_objects(id=id)[0]
@@ -345,8 +348,8 @@ class Cache(object):
 			elif constants.FEATURE_ORDERED_OBJECT in self.features:
 				callback("Skipping remaining as already selfd!")
 				break
-			
-			callback("Got object with id of %i (last modified at %s)..." % (id, time), add=1)
+
+			callback("Got object with id of %i (last modified at %s)..." % (id, df(time)), add=1)
 
 		#print "Objects",
 		#pprint.pprint(self.objects.items())
@@ -365,7 +368,7 @@ class Cache(object):
 		iter = connection.get_board_ids(iter=True)
 		
 		for id, time in iter:
-			callback("Getting board with id of %i (last modified at %s)..." % (id, time), of=iter.total)
+			callback("Getting board with id of %i (last modified at %s)..." % (id, df(time)), of=iter.total)
 
 			if not self.boards.has_key(id) or time > self.boards.times[id]:
 				board = connection.get_boards(id=id)[0]
@@ -393,7 +396,7 @@ class Cache(object):
 				callback("Skipping remaining as already selfd!")
 				break
 				
-			callback("Got board with id of %i (last modified at %s)..." % (id, time), add=1)
+			callback("Got board with id of %i (last modified at %s)..." % (id, df(time)), add=1)
 
 		#print "Boards",
 		#pprint.pprint(self.boards.items())
@@ -404,7 +407,7 @@ class Cache(object):
 		iter = connection.get_orderdesc_ids(iter=True)
 		
 		for id, time in iter:
-			callback("Getting board with id of %i (last modified at %s)..." % (id, time), of=iter.total)
+			callback("Getting board with id of %i (last modified at %s)..." % (id, df(time)), of=iter.total)
 
 			desc = connection.get_orderdescs(id=id)[0]
 
@@ -414,14 +417,14 @@ class Cache(object):
 			else:
 				print "Warning: failed to get %i" % id, desc
 		
-			callback("Got order description with id of %i (last modified at %s)..." % (id, time), add=1)
+			callback("Got order description with id of %i (last modified at %s)..." % (id, df(time)), add=1)
 
 		def get_all(name, get_ids, get, cache, feature, callback=callback):
 			callback("Getting %s..." % name, of=0)
 			iter = get_ids(iter=True)
 			
 			for id, time in iter:
-				callback("Getting %s with id of %i (last modified at %s)..." % (name, id, time), of=iter.total)
+				callback("Getting %s with id of %i (last modified at %s)..." % (name, id, df(time)), of=iter.total)
 
 				if not cache.has_key(id) or time > cache.times[id]:
 					frame = get(id=id)[0]
@@ -439,7 +442,7 @@ class Cache(object):
 					callback("Skipping remaining as already cached!")
 					break
 				
-				callback("Got %s with id of %i (last modified at %s)..." % (name, id, time), add=1)
+				callback("Got %s with id of %i (last modified at %s)..." % (name, id, df(time)), add=1)
 
 			#print name,
 			#pprint.pprint(cache.items())

@@ -20,8 +20,8 @@ class ChangeDict(dict):
 		else:
 			time = -1
 
-		if time != -1 and self.times.has_key(key) and self.times[key] >= time:
-			raise ValueError("The object isn't new enough to update the dictionary with!")
+		if time != -1 and self.times.has_key(key) and self.times[key] > time:
+			raise ValueError("The object isn't new enough to update the dictionary with! Current %s, update %s" % (self.times[key], time))
 		
 		self.times[key] = time
 		dict.__setitem__(self, key, value)

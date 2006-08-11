@@ -133,6 +133,12 @@ class NetworkThread(CallThread):
 		"""
 		pass
 
+	class NetworkConnectEvent(Exception):
+		"""\
+		Raised when the network connects to a server.
+		"""
+		pass
+
 	######################################
 
 	def __init__(self, application):

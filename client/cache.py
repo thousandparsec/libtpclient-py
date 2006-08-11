@@ -20,7 +20,7 @@ from ChangeDict import ChangeDict
 class Cache(object):
 	"""\
 	This is the a cache of the data downloaded from the network. 
-	
+
 	It can be pickled and restored at a later date to preserve the data accross application runs.
 	"""
 	version = 2
@@ -44,7 +44,7 @@ class Cache(object):
 
 			self.id = id
 
-			args = list(args)	
+			args = list(args)
 			if what in Cache.compound:
 				if len(args) == 2:
 					self.slot = args.pop(0)
@@ -52,7 +52,7 @@ class Cache(object):
 					self.slot = kw['slot']
 				else:
 					raise TypeError("A slot value is required for compound types.")
-			
+
 			if len(args) == 1:
 				self.change = args.pop(0)
 			elif kw.has_key('change'):
@@ -67,7 +67,7 @@ class Cache(object):
 				return "<%s %s %s id=%i slot=%i>" % (self.__class__, self.what, self.action, self.id, self.slot)
 			else:
 				return "<%s %s %s id=%i>" % (self.__class__, self.what, self.action, self.id)
-		
+
 	class CacheDirtyEvent(CacheEvent):
 		"""\
 		Raised when the game cache is made dirty. Contains a reference to what was updated.
@@ -108,7 +108,7 @@ class Cache(object):
 			p, s = key.split('//', 1)
 			key = "%s//%s@%s" % (p, username, s)
 		return key
-	key = staticmethod(key)	
+	key = staticmethod(key)
 
 	def configkey(key):
 		key = base64.encodestring(key)[:-2]
@@ -123,7 +123,7 @@ class Cache(object):
 				break
 			elif base != ".":
 				continue
-			
+
 		return os.path.join(base, extra)
 	configdir = staticmethod(configdir)
 
@@ -155,7 +155,7 @@ class Cache(object):
 				print "Unable to load the data, saved cache must be corrupt."
 		print "Creating the Cache fresh (%s)." % (self.file,)
 		self.new()
-	
+
 	def new(self):
 		# Features
 		self.features		= []
@@ -185,7 +185,7 @@ class Cache(object):
 		"""
 		if not isinstance(evt, self.CacheDirtyEvent):
 			raise TypeError("I can only accept CacheDirtyEvents")
-		
+
 		if not evt.what in Cache.compound:
 			if evt.action == "create" or evt.action == "change":
 				getattr(self, evt.what)[evt.id] = (-1, evt.change)
@@ -198,7 +198,7 @@ class Cache(object):
 					d.append(evt.change)
 				else:
 					d.insert(evt.slot, evt.change)
-					
+
 			elif evt.action == "change":
 				d[evt.slot] = evt.change
 			elif evt.action == "remove":
@@ -210,12 +210,12 @@ class Cache(object):
 		"""\
 		"""
 		f = open(self.file, 'rb')
-		
+
 		# Read in the version number
 		v, = struct.unpack('!I', f.read(4))
 		if v != self.version:
 			raise IOError("The cache is not of this version! (It's version %s)" % (v,))
-		
+
 		# First load the pickle
 		self.__dict__ = pickle.load(f)
 
@@ -240,22 +240,22 @@ class Cache(object):
 			else:
 				# Get the ID number
 				id, = struct.unpack('!Q', f.read(8))
-			
+
 				if not self.orders.has_key(id):
 					self.orders[id] = (self.objects.times[id], [])
 				self.orders[id].append(p)
-		
+
 		for id in self.objects.keys():
 			if not self.orders.has_key(id):
 				self.orders[id] = (self.objects.times[id], [])
-		
+
 		#pprint.pprint(self.__dict__)
 
 	def save(self):
 		"""\
 		"""
 		#pprint.pprint(self.__dict__)
-		
+
 		# Save the cache
 		f = open(self.file, 'wb')
 		f.write(struct.pack('!I', self.version))
@@ -309,6 +309,7 @@ class Cache(object):
 		#	FIXME: This should compare any read-only attributes and see if they have change
 		#	FIXME: This should check the current turn and see if the turn is strange (IE gone back in time)
 		#	FIXME: Should check that none of the Order definitions have changed
+
 
 		# Get the features this server support
 		callback("Looking for supported features...", mode="connecting")
@@ -405,7 +406,7 @@ class Cache(object):
 		# -----------------------------------------------------------------------------------
 		callback("Getting order descriptions...", mode="order_descs")
 		iter = connection.get_orderdesc_ids(iter=True)
-		
+
 		for id, time in iter:
 			callback("Getting board with id of %i (last modified at %s)..." % (id, df(time)), of=iter.total)
 
@@ -416,7 +417,7 @@ class Cache(object):
 				desc.register()
 			else:
 				print "Warning: failed to get %i" % id, desc
-		
+
 			callback("Got order description with id of %i (last modified at %s)..." % (id, df(time)), add=1)
 
 		def get_all(name, get_ids, get, cache, feature, callback=callback):
@@ -453,17 +454,17 @@ class Cache(object):
 
 		get_all("Designs", connection.get_design_ids, connection.get_designs, 
 					self.designs, constants.FEATURE_ORDERED_DESIGN)
-					
+
 		get_all("Components", connection.get_component_ids, connection.get_components, 
 					self.components, constants.FEATURE_ORDERED_COMPONENT)
-		
+
 		get_all("Properties", connection.get_property_ids, connection.get_properties, 
 					self.properties, constants.FEATURE_ORDERED_PROPERTY)
-				
+
 		callback("Getting all other objects...", mode="remaining")
 		get_all("Resources", connection.get_resource_ids, connection.get_resources, 
 					self.resources, constants.FEATURE_ORDERED_RESOURCE)
-		
+
 		#get_all("Players", connection.get_player_ids, connection.get_players, 
 		#			self.players, constants.FEATURE_ORDERED_PLAYERS)
 		self.players[0] = connection.get_players(0)[0]

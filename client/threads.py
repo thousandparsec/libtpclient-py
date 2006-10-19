@@ -141,6 +141,12 @@ class NetworkThread(CallThread):
 		"""
 		pass
 
+	class NetworkAccountEvent(Exception):
+		"""\
+		Raised when an account is successful created on a server.
+		"""
+		pass
+
 	######################################
 
 	def __init__(self, application):
@@ -166,6 +172,15 @@ class NetworkThread(CallThread):
 		func = 'On' + event.__class__.__name__[:-5]
 		if hasattr(self, func):
 			getattr(self, func)(event)
+
+	def NewAccount(self, username, password, email):
+		"""\
+		"""
+		result = self.connection.account(username, password, email)
+		print result, type(result)
+		if failed(result):
+			self.application.Post(self.NetworkFailureEvent(result[1]))
+		self.application.Post(self.NetworkAccountEvent(result))
 
 	def Connect(self, host, debug=False, callback=nop, cs="unknown"):
 		"""\

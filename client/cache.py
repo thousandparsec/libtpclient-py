@@ -335,9 +335,11 @@ class Cache(object):
 				callback("Get object failed...", add=1)
 
 		# Download the objects
-		callback("Have %i objects to get..." % len(toget), total=len(toget))
+		callback("Have %i objects to get..." % len(toget), of=len(toget))
 		frames = connection.get_objects(ids=toget, callback=OnPacket)
-		callback("Gotten all objects...", number=len(toget))
+		callback("Gotten all objects...")
+
+		print frames
 
 		# Set the blocking so we can pipeline the order requests
 		connection.setblocking(True)
@@ -399,11 +401,11 @@ class Cache(object):
 				callback("Get board failed...", add=1)
 
 		# Download the boards
-		callback("Have %i boards to get..." % len(toget), total=len(toget))
+		callback("Have %i boards to get..." % len(toget), of=len(toget))
 		frames = []
 		if len(toget) > 0:
 			frames = connection.get_boards(ids=toget, callback=OnPacket)
-		callback("Gotten all boards...", number=len(toget))
+		callback("Gotten all boards...")
 
 		# Set the blocking so we can pipeline the order requests
 		connection.setblocking(True)
@@ -478,9 +480,9 @@ class Cache(object):
 					callback("Getting %s failed..." % name, add=1)
 
 			# Download the objects
-			callback("Have %i %s to get..." % (len(toget), name), total=len(toget))
+			callback("Have %i %s to get..." % (len(toget), name), of=len(toget))
 			frames = get(ids=toget, callback=OnPacket)
-			callback("Gotten all %s..." % name, number=len(toget))
+			callback("Gotten all %s..." % name)
 
 			for id, object in zip(toget, frames):
 				# Did we download the object okay?

@@ -14,6 +14,9 @@ from media import Media
 from config import load_data, save_data
 from version import version
 
+def nop(*args, **kw):
+	return
+
 class Application(object):
 	"""
 	Container for all the applications threads and the network cache.
@@ -74,7 +77,6 @@ class Application(object):
 		"""\
 		Post an application wide event to every thread.
 		"""
-		print "Application.Post", event
 		self.network.Call(self.network.Post, event)
 		self.media.Call(self.media.Post, event)
 		self.gui.Call(self.gui.Post, event)
@@ -162,23 +164,21 @@ class NetworkThread(CallThread):
 		Post an Event the current window.
 		"""
 		func = 'On' + event.__class__.__name__[:-5]
-		print "Posting %s to %s" % (event, func)
 		if hasattr(self, func):
 			getattr(self, func)(event)
 
-	def ConnectTo(self, host, username, password, debug=False, callback=None, cs="unknown"):
+	def Connect(self, host, debug=False, callback=nop, cs="unknown"):
 		"""\
-		Connect to a given host using a certain username and password.
 		"""
-		if callback is None:
-			def callback(*args, **kw):
-				pass
-		
 		callback("Connecting...", mode="connecting")
-		if self.connection.setup(host=host, debug=debug):
-			s  = _("The client was unable to connect to the host.\n")
-			s += _("This could be because the server is down or there is a problem with the network.\n")
-			self.application.Post(self.NetworkFailureEvent(s))
+		try:
+			if self.connection.setup(host=host, debug=debug):
+				s  = _("The client was unable to connect to the host.\n")
+				s += _("This could be because the server is down or there is a problem with the network.\n")
+				self.application.Post(self.NetworkFailureEvent(s))
+				return False
+		except socket.error, e:
+			self.application.Post(self.NetworkFailureEvent(e.args[1]))
 			return False
 			
 		callback("Looking for Thousand Parsec Server...")
@@ -187,6 +187,23 @@ class NetworkThread(CallThread):
 			s += _("This could be because the server is down or the connection details are incorrect.\n")
 			self.application.Post(self.NetworkFailureEvent(s))
 			return False
+
+		callback("Looking for supported features...")
+		features = self.connection.features()
+		if failed(features):
+			s  = _("The client connected to the host but it did not appear to be a Thousand Parsec server.\n")
+			s += _("This could be because the server is down or the connection details are incorrect.\n")
+			self.application.Post(self.NetworkFailureEvent(s))
+			return False
+		else:
+			self.application.Post(self.NetworkConnectEvent(features))
+		return 
+
+	def ConnectTo(self, host, username, password, debug=False, callback=nop, cs="unknown"):
+		"""\
+		Connect to a given host using a certain username and password.
+		"""
+		self.Connect(host, debug, callback, cs)
 
 		callback("Logging In")
 		if failed(self.connection.login(username, password)):

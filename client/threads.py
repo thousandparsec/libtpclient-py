@@ -177,11 +177,11 @@ class NetworkThread(CallThread):
 	def NewAccount(self, username, password, email):
 		"""\
 		"""
-		result = self.connection.account(username, password, email)
-		print result, type(result)
-		if failed(result):
-			self.application.Post(self.NetworkFailureEvent(result[1]))
-		self.application.Post(self.NetworkAccountEvent(result))
+		result, message = self.connection.account(username, password, email)
+		if result:
+			self.application.Post(self.NetworkAccountEvent(message))
+		else:
+			self.application.Post(self.NetworkFailureEvent(message))
 
 	def Connect(self, host, debug=False, callback=nop, cs="unknown"):
 		"""\

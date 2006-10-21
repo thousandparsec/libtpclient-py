@@ -161,9 +161,10 @@ class NetworkThread(CallThread):
 			s += _("Any changes since last save have been lost.\n")
 			if getattr(self.connection, 'debug', False):
 				s += _("A traceback of the error was printed to the console.\n")
-				print e
+				print error
 			self.application.Post(self.NetworkFailureEvent(s))
-		raise
+		else:
+			raise
 
 	def Post(self, event):
 		"""

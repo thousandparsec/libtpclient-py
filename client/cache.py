@@ -339,8 +339,6 @@ class Cache(object):
 		frames = connection.get_objects(ids=toget, callback=OnPacket)
 		callback("Gotten all objects...")
 
-		print frames
-
 		# Set the blocking so we can pipeline the order requests
 		connection.setblocking(True)
 

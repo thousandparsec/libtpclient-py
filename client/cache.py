@@ -359,14 +359,18 @@ class Cache(object):
 			self.orders[id] = (object.modify_time, [])
 			connection.get_orders(id, range(0, object.order_number))
 
-		for id in toget:
-			# Wait for the response to the order requests
+		# Wait for the response to the order requests
+		while len(toget) > 0:
 			result = None
 			while result is None:
 				result = connection.poll()
 
+			id = toget.pop(0)
+			print id, repr(result)
+
 			if failed(result):
 				continue
+
 			self.orders[id] = (self.objects[id].modify_time, result)
 
 		connection.setblocking(False)
@@ -425,15 +429,18 @@ class Cache(object):
 			self.messages[id] = (time, [])
 			connection.get_messages(id, range(0, board.number))
 
-		for id in toget:
-			# Wait for the response to the order requests
+		while len(toget) > 0:
 			result = None
 			while result is None:
 				result = connection.poll()
 
+			id = toget.pop(0)
+			print id, repr(result)
+
 			if failed(result):
 				continue
-			self.messages[id].append(result)
+
+			self.messages[id] = (self.boards[id].modify_time, result)
 
 		connection.setblocking(False)
 

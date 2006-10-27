@@ -4,6 +4,7 @@ import shutil
 import stat
 import string
 
+import socket
 import httplib
 import urllib, urlparse
 import time
@@ -64,22 +65,26 @@ class Media:
 		"""\
 		Checks the file's timestamp against the remote's version.
 		"""
-		self.connection.request("HEAD", media_remote)
+		try:
+			self.connection.request("HEAD", media_remote)
 			
-		headers = {}
-		headers['last-modified'] = self.connection.getresponse().getheader('last-modified')
-#		for key, value in self.connection.getresponse().getheaders():
-#			headers[key] = value
+			headers = {}
+			headers['last-modified'] = self.connection.getresponse().getheader('last-modified')
+#			for key, value in self.connection.getresponse().getheaders():
+#				headers[key] = value
 
-		remotedate = time.strptime(headers['last-modified'], "%a, %d %b %Y %H:%M:%S %Z")[0:5]
-		localdate = eval(open(media_local + ".timestamp").read())
+			remotedate = time.strptime(headers['last-modified'], "%a, %d %b %Y %H:%M:%S %Z")[0:5]
+			localdate = eval(open(media_local + ".timestamp").read())
 
-		print "Remote Date", remotedate
-		print "Local Date ", localdate
+			print "Remote Date", remotedate
+			print "Local Date ", localdate
 
-		if remotedate <= localdate:
+			if remotedate <= localdate:
+				return False
+			return True
+		except socket.error, e:
+			print e
 			return False
-		return True
 
 	def ready(self, file, timestamp):
 		"""\
@@ -121,11 +126,15 @@ class Media:
 		if not os.path.exists(ldir):
 			os.makedirs(ldir)
 
-		(trash, message) = self.getter.retrieve(media_url, media_local, callback)
-		remotedate = time.strptime(message.getheader('last-modified'), "%a, %d %b %Y %H:%M:%S %Z")[0:5]
+		try:
+			(trash, message) = self.getter.retrieve(media_url, media_local, callback)
+			remotedate = time.strptime(message.getheader('last-modified'), "%a, %d %b %Y %H:%M:%S %Z")[0:5]
 
-		open(media_local + ".timestamp", 'w').write(repr(remotedate))
-		return media_local
+			open(media_local + ".timestamp", 'w').write(repr(remotedate))
+			return media_local
+		except IOError, e:
+			print e
+			return False
 
 	files = "media.gz"
 	def getpossible(self, valid_types, callback=None):
@@ -133,13 +142,13 @@ class Media:
 		Gets the Media description file from the http server.
 		"""
 		file = self.getfile(self.files, callback)
-
-		for line in gzip.GzipFile(file, 'r').readlines():
-			line, timestamp = line.strip().split(' ')
-			timestamp = time.strptime(timestamp, "%Y%m%dT%H%M")[0:5]
-			for type in valid_types:
-				if line.endswith(type):
-					yield line, timestamp
+		if file:
+			for line in gzip.GzipFile(file, 'r').readlines():
+				line, timestamp = line.strip().split(' ')
+				timestamp = time.strptime(timestamp, "%Y%m%dT%H%M")[0:5]
+				for type in valid_types:
+					if line.endswith(type):
+						yield line, timestamp
 
 if __name__ == "__main__":
 	import sys

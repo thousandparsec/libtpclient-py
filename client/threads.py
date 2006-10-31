@@ -219,7 +219,8 @@ class NetworkThread(CallThread):
 		"""\
 		Connect to a given host using a certain username and password.
 		"""
-		self.Connect(host, debug, callback, cs)
+		if self.Connect(host, debug, callback, cs) is False:
+			return False
 
 		callback("Logging In")
 		if failed(self.connection.login(username, password)):

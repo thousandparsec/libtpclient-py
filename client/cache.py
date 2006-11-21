@@ -10,6 +10,11 @@ from datetime import datetime
 def df(time):
 	return datetime.utcfromtimestamp(time).strftime('%c')
 
+try:
+	set()
+except NameError:
+	from sets import Set as set
+
 # Other library imports
 from tp.netlib import Connection, failed, constants
 from tp.netlib.objects import Header, Description, OrderDescs, DynamicBaseOrder
@@ -324,8 +329,9 @@ class Cache(object):
 		for id, time in connection.get_object_ids(iter=True):
 			if not self.objects.has_key(id) or time > self.objects.times[id]:
 				toget.append(id)
-			elif constants.FEATURE_ORDERED_OBJECT in self.features:
-				break
+# FIXME: This doesn't work if an object disappears...
+#			elif constants.FEATURE_ORDERED_OBJECT in self.features:
+#				break
 
 		# Callback function
 		def OnPacket(p, callback=callback):
@@ -341,8 +347,11 @@ class Cache(object):
 
 		# Set the blocking so we can pipeline the order requests
 		connection.setblocking(True)
-
+		
+		ids = []
 		for id, object in zip(toget, frames):
+			ids.append(id)
+
 			# Did we download the object okay?
 			if failed(object):
 				# Clean up the object
@@ -373,6 +382,18 @@ class Cache(object):
 
 			self.orders[id] = (self.objects[id].modify_time, result)
 
+		# Check for objects which no longer exist..
+		# FIXME: There should be a better way to do this
+		if len(ids) != len(self.objects):
+			gotten = set(ids)
+			having = set(self.objects.keys())
+
+			difference = having.difference(gotten)
+			for id in difference:
+				del self.objects[id]
+				if self.orders.has_key(id):
+					del self.orders[id]
+
 		connection.setblocking(False)
 
 		#print "Building two way Universe Tree for speed"
@@ -392,8 +413,9 @@ class Cache(object):
 		for id, time in connection.get_board_ids(iter=True):
 			if not self.boards.has_key(id) or time > self.boards.times[id]:
 				toget.append(id)
-			elif constants.FEATURE_ORDERED_OBJECT in self.features:
-				break
+# FIXME: This doesn't work if an object disappears...
+#			elif constants.FEATURE_ORDERED_BOARD in self.features:
+#				break
 
 		# Callback function
 		def OnPacket(p, callback=callback):
@@ -443,6 +465,18 @@ class Cache(object):
 			self.messages[id] = (self.boards[id].modify_time, result)
 
 		connection.setblocking(False)
+
+		# Check for boards which no longer exist..
+		# FIXME: There should be a better way to do this
+		if len(ids) != len(self.boards):
+			gotten = set(ids)
+			having = set(self.boards.keys())
+
+			difference = having.difference(gotten)
+			for id in difference:
+				del self.boards[id]
+				if self.messages.has_key(id):
+					del self.messages[id]
 
 		# Get all the order descriptions
 		# -----------------------------------------------------------------------------------

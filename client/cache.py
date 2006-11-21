@@ -326,7 +326,9 @@ class Cache(object):
 
 		# Figure out the IDs to download
 		toget = []
+		ids = []
 		for id, time in connection.get_object_ids(iter=True):
+			ids.append(id)
 			if not self.objects.has_key(id) or time > self.objects.times[id]:
 				toget.append(id)
 # FIXME: This doesn't work if an object disappears...
@@ -347,10 +349,7 @@ class Cache(object):
 
 		# Set the blocking so we can pipeline the order requests
 		connection.setblocking(True)
-		
-		ids = []
 		for id, object in zip(toget, frames):
-			ids.append(id)
 
 			# Did we download the object okay?
 			if failed(object):
@@ -389,6 +388,7 @@ class Cache(object):
 			having = set(self.objects.keys())
 
 			difference = having.difference(gotten)
+			print "diff", difference
 			for id in difference:
 				del self.objects[id]
 				if self.orders.has_key(id):
@@ -410,7 +410,9 @@ class Cache(object):
 
 		# Figure out the IDs to download
 		toget = []
+		ids = []
 		for id, time in connection.get_board_ids(iter=True):
+			ids.append(id)
 			if not self.boards.has_key(id) or time > self.boards.times[id]:
 				toget.append(id)
 # FIXME: This doesn't work if an object disappears...

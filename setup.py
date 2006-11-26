@@ -24,9 +24,10 @@ Includes support for:
 	url			="http://www.thousandparsec.net",
 	keywords	="thousand parsec space client support empire building strategy game tpcl scheme",
 
+	namespace_packages = ['tp'],
 	packages=[ \
+		'tp',
 		'tp.client',
 		'tp.client.pyscheme',
 	],
-	namespace_packages = ['tp'],
 )

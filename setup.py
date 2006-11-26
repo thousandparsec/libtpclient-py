@@ -1,25 +1,32 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+from tp.client import version
+version = "%s.%s.%s" % version
 
-version = "0.0.1"
+from setuptools import setup
 
-import os.path
-import os
+setup(
+	name		="libtpclient-py",
+	version		=version,
+	license		="GPL",
+	description	="Client support library for Thousand Parsec",
+	long_description="""\
+A library of code to support quick development of Clients for Thousand Parsec.
 
-setup(name="libtpclient-py",
-	version=version,
-	license="GPL",
-	description="Client support library for Thousand Parsec",
-	author="Tim Ansell",
+Includes support for:
+	* Classes of keeping a download cache of the universe (including automatic
+ update)
+	* Classes for parsing and calculating tpcl 
+	* Threading support
+""",
+	author		="Tim Ansell",
 	author_email="tim@thousandparsec.net",
-	url="http://www.thousandparsec.net",
+	url			="http://www.thousandparsec.net",
+	keywords	="thousand parsec space client support empire building strategy game tpcl scheme",
+
 	packages=[ \
-		'tp',
 		'tp.client',
 		'tp.client.pyscheme',
 	],
-	package_dir = {'tp': ''}
+	namespace_packages = ['tp'],
 )
-
-

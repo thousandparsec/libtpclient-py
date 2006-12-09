@@ -235,104 +235,106 @@ def install_core_handlers(expanderInstance):
 ######################################################################    
 
 try:
-	import unittest
-	class ExpanderTests(unittest.TestCase):
-		def setUp(self):
-			self.expander = Expander()
-			install_core_handlers(self.expander)
-			
+    import unittest
 
-		def ep(self, string):
-			"""Expand and parse.  Typing shortcut."""
-			return self.expander.expand(parser.parse(string))
+    class ExpanderTests(unittest.TestCase):
+        def setUp(self):
+            self.expander = Expander()
+            install_core_handlers(self.expander)
+            
 
-
-		def p(self, string):
-			"""Parse.  Typing shortcut."""
-			return parser.parse(string)
-
-		
-		def testExpansionOnEmptyCase(self):
-			self.assertEquals(self.p('()'), self.ep('()'))
+        def ep(self, string):
+            """Expand and parse.  Typing shortcut."""
+            return self.expander.expand(parser.parse(string))
 
 
-		def testANDExpansion(self):
-			self.assertEquals(self.p("#f"), self.ep("(and)"))
-			self.assertEquals(self.p("foo"), self.ep("(and foo)"))
-			self.assertEquals(self.p("(if 3 4 #f)"), self.ep("(and 3 4)"))
-			self.assertEquals(self.p("(if 3 (if 4 5 #f) #f)"),
-							  self.ep("(and 3 4 5)"))
-			self.assertEquals(3, self.ep("(and (and (and 3)))"))
+        def p(self, string):
+            """Parse.  Typing shortcut."""
+            return parser.parse(string)
 
-		def testOrExpansion(self):
-			self.assertEquals(self.p("#t"), self.ep("(or)"))
-			self.assertEquals(self.p("blah"), self.ep("(or blah)"))
-			self.ep("(or foo bar)")
-			self.ep("(or (and 3) (and 4) (and 5))")
-			## FIXME: I have to figure out how to test this, without
-			## knowing in advance the temporary symbols used in the
-			## expansion...
+        
+        def testExpansionOnEmptyCase(self):
+            self.assertEquals(self.p('()'), self.ep('()'))
 
 
-		def testQuote(self):
-			self.assertEquals(self.p("(quote and)"), self.ep("'and"))
+        def testANDExpansion(self):
+            self.assertEquals(self.p("#f"), self.ep("(and)"))
+            self.assertEquals(self.p("foo"), self.ep("(and foo)"))
+            self.assertEquals(self.p("(if 3 4 #f)"), self.ep("(and 3 4)"))
+            self.assertEquals(self.p("(if 3 (if 4 5 #f) #f)"),
+                              self.ep("(and 3 4 5)"))
+            self.assertEquals(3, self.ep("(and (and (and 3)))"))
+
+        def testOrExpansion(self):
+            self.assertEquals(self.p("#t"), self.ep("(or)"))
+            self.assertEquals(self.p("blah"), self.ep("(or blah)"))
+            self.ep("(or foo bar)")
+            self.ep("(or (and 3) (and 4) (and 5))")
+            ## FIXME: I have to figure out how to test this, without
+            ## knowing in advance the temporary symbols used in the
+            ## expansion...
 
 
-		def testSetBang(self):
-			self.assertEquals(self.p("(set! x 42)"), self.ep("(set! x (AND 42))"))
+        def testQuote(self):
+            self.assertEquals(self.p("(quote and)"), self.ep("'and"))
 
 
-		def testDefine(self):
-			self.assertEquals(self.p("(define x 42)"),
-							  self.ep("(define x (AND 42))"))
-							  
-
-		def testIf(self):
-			self.assertEquals(self.p("(if foo bar bah!)"),
-							  self.ep("(if (AND foo) (AND bar) (AND bah!))"))
+        def testSetBang(self):
+            self.assertEquals(self.p("(set! x 42)"), self.ep("(set! x (AND 42))"))
 
 
-		def testLambda(self):
-			self.assertEquals(self.p("(lambda (x) one two)"),
-							  self.ep("(lambda (x) (AND one) (AND two))"))
+        def testDefine(self):
+            self.assertEquals(self.p("(define x 42)"),
+                              self.ep("(define x (AND 42))"))
+                              
+
+        def testIf(self):
+            self.assertEquals(self.p("(if foo bar bah!)"),
+                              self.ep("(if (AND foo) (AND bar) (AND bah!))"))
 
 
-		def testBegin(self):
-			self.assertEquals(self.p("(begin one two three)"),
-							  self.ep("(begin (AND one) (begin (AND two)) (AND three))"))
+        def testLambda(self):
+            self.assertEquals(self.p("(lambda (x) one two)"),
+                              self.ep("(lambda (x) (AND one) (AND two))"))
 
 
-		def testLet(self):
-			self.assertEquals(self.p("((lambda (foo bar) (+ foo bar)) boo hoo)"),
-							  self.ep("""(let ((foo boo)
-											   (bar hoo))
-											  (+ foo bar))"""))
+        def testBegin(self):
+            self.assertEquals(self.p("(begin one two three)"),
+                              self.ep("(begin (AND one) (begin (AND two)) (AND three))"))
 
 
-		def testCond(self):
-			self.assertEquals(self.p("""
-							  (define fib
-								 (lambda (x)
-									(if (= x 0)
-										0
-										(if (= x 1)
-											1
-											(+ (fib (- x 1)
-													(- x 2)))))))
-									 """),
-							  self.ep("""
-							  (define (fib x)
-								 (cond ((= x 0) 0)
-									   ((= x 1) 1)
-									   (else (+ (fib (- x 1)
-													 (- x 2))))))
-							  """))
+        def testLet(self):
+            self.assertEquals(self.p("((lambda (foo bar) (+ foo bar)) boo hoo)"),
+                              self.ep("""(let ((foo boo)
+                                               (bar hoo))
+                                              (+ foo bar))"""))
 
-		## FIXME: add more complex cases here
 
-	if __name__ == '__main__':
-    	unittest.main()
+        def testCond(self):
+            self.assertEquals(self.p("""
+                              (define fib
+                                 (lambda (x)
+                                    (if (= x 0)
+                                        0
+                                        (if (= x 1)
+                                            1
+                                            (+ (fib (- x 1)
+                                                    (- x 2)))))))
+                                     """),
+                              self.ep("""
+                              (define (fib x)
+                                 (cond ((= x 0) 0)
+                                       ((= x 1) 1)
+                                       (else (+ (fib (- x 1)
+                                                     (- x 2))))))
+                              """))
+
+        ## FIXME: add more complex cases here
+
+    if __name__ == '__main__':
+        unittest.main()
+
 except ImportError:
-	pass
+    pass
         
 

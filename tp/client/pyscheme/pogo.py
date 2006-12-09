@@ -37,39 +37,39 @@ def land(value):
 
 ######################################################################
 try:
-	import unittest
-	class PogoTest(unittest.TestCase):
-		def testFactorial(self):
-			def iter_fact(n):
-				result = 1
-				while n != 0:
-					result *= n
-					n -= 1
-				return result
-			def tramp_fact(n, k=1):
-				if n == 0:
-					return land(k)
-				return bounce(tramp_fact, n-1, k*n)
-			self.assertEquals(6, pogo(tramp_fact(3)))
-			self.assertEquals(6, pogo(tramp_fact(3)))
-			for i in [1, 10, 100, 1000]:
-				self.assertEquals(iter_fact(i), pogo(tramp_fact(i)))
+    import unittest
+    class PogoTest(unittest.TestCase):
+        def testFactorial(self):
+            def iter_fact(n):
+                result = 1
+                while n != 0:
+                    result *= n
+                    n -= 1
+                return result
+            def tramp_fact(n, k=1):
+                if n == 0:
+                    return land(k)
+                return bounce(tramp_fact, n-1, k*n)
+            self.assertEquals(6, pogo(tramp_fact(3)))
+            self.assertEquals(6, pogo(tramp_fact(3)))
+            for i in [1, 10, 100, 1000]:
+                self.assertEquals(iter_fact(i), pogo(tramp_fact(i)))
 
-		def testEvenOdd(self):
-			def tramp_even(n):
-				if n == 0:
-					return land(True)
-				return bounce(tramp_odd, n-1)
-			def tramp_odd(n):
-				if n == 0:
-					return land(False)
-				return bounce(tramp_even, n-1)
-			for i in range(20) + [100, 1000, 10000]:
-				self.assertEquals(i % 2 == 0, pogo(tramp_even(i)))
-				
+        def testEvenOdd(self):
+            def tramp_even(n):
+                if n == 0:
+                    return land(True)
+                return bounce(tramp_odd, n-1)
+            def tramp_odd(n):
+                if n == 0:
+                    return land(False)
+                return bounce(tramp_even, n-1)
+            for i in range(20) + [100, 1000, 10000]:
+                self.assertEquals(i % 2 == 0, pogo(tramp_even(i)))
+                
 
 
-	if __name__ == '__main__':
-		unittest.main()
+    if __name__ == '__main__':
+        unittest.main()
 except ImportError:
-	pass
+    pass

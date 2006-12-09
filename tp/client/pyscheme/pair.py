@@ -250,46 +250,46 @@ in Python.
 ######################################################################
 
 try:
-	import unittest
-	class PairTests(unittest.TestCase):
-		def testNull(self):
-			self.assert_(isList(NIL))
+    import unittest
+    class PairTests(unittest.TestCase):
+        def testNull(self):
+            self.assert_(isList(NIL))
 
-		def testReversal(self):
-			self.assertEquals(list(1, 2, 3, 4, 5),
-							  reverse(list(5, 4, 3, 2, 1)))
+        def testReversal(self):
+            self.assertEquals(list(1, 2, 3, 4, 5),
+                              reverse(list(5, 4, 3, 2, 1)))
 
-		def testMapping(self):
-			self.assertEquals(list(2, 4, 6, 8),
-							  listMap(lambda x: x*2, list(1, 2, 3, 4)))
+        def testMapping(self):
+            self.assertEquals(list(2, 4, 6, 8),
+                              listMap(lambda x: x*2, list(1, 2, 3, 4)))
 
-		def testAppendTwo(self):
-			self.assertEquals(list(1, 2, 3, 4),
-							  pogo.pogo(c_appendTwo(list(1, 2),
-													list(3, 4),
-													pogo.land)))
-
-
-		def testContinuationMapping(self):
-			def c_square(x, cont):
-				return pogo.bounce(cont, x**2)
-
-			self.assertEquals(cons(4, 9),
-							  pogo.pogo(c_listMap(c_square, cons(2, 3),
-												  pogo.land,
-												  allow_improper_lists=True)))
-			self.assertRaises(SchemeError,
-							  pogo.pogo,
-							  pogo.bounce(c_listMap, c_square,
-										  cons(2, 3), pogo.land))
-
-			self.assertEquals(list(1, 4, 9, 16),
-							  pogo.pogo(c_listMap(c_square,
-												  list(1, 2, 3, 4),
-												  pogo.land)))
+        def testAppendTwo(self):
+            self.assertEquals(list(1, 2, 3, 4),
+                              pogo.pogo(c_appendTwo(list(1, 2),
+                                                    list(3, 4),
+                                                    pogo.land)))
 
 
-	if __name__ == '__main__':
-		unittest.main()
+        def testContinuationMapping(self):
+            def c_square(x, cont):
+                return pogo.bounce(cont, x**2)
+
+            self.assertEquals(cons(4, 9),
+                              pogo.pogo(c_listMap(c_square, cons(2, 3),
+                                                  pogo.land,
+                                                  allow_improper_lists=True)))
+            self.assertRaises(SchemeError,
+                              pogo.pogo,
+                              pogo.bounce(c_listMap, c_square,
+                                          cons(2, 3), pogo.land))
+
+            self.assertEquals(list(1, 4, 9, 16),
+                              pogo.pogo(c_listMap(c_square,
+                                                  list(1, 2, 3, 4),
+                                                  pogo.land)))
+
+
+    if __name__ == '__main__':
+        unittest.main()
 except ImportError:
-	pass
+    pass

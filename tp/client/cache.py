@@ -8,7 +8,12 @@ import struct
 import cPickle as pickle
 from datetime import datetime
 def df(time):
-	return datetime.utcfromtimestamp(time).strftime('%c')
+	if type(time) in (float, int, long):
+		return datetime.utcfromtimestamp(time).strftime('%c')
+	elif type(time) is datetime:
+		return time.strftime('%c')
+	else:
+		raise TypeError("Unable to output this type...")
 
 try:
 	set()

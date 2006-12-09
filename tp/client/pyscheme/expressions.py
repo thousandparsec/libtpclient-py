@@ -9,7 +9,6 @@ from sets import Set
 import pair
 import types
 from symbol import isSymbol, false, Symbol
-import unittest
 import pogo
 import parser
 
@@ -478,67 +477,70 @@ def toString(expr, quoteStrings=1):
 
 ######################################################################
 
+try:
+	import unittest
+	class ExpressionTests(unittest.TestCase):
+		def setUp(self):
+			self._oldrecursionlimit = sys.getrecursionlimit()
+			sys.setrecursionlimit(50)
 
-class ExpressionTests(unittest.TestCase):
-    def setUp(self):
-        self._oldrecursionlimit = sys.getrecursionlimit()
-        sys.setrecursionlimit(50)
+		def tearDown(self):
+			sys.setrecursionlimit(self._oldrecursionlimit)
 
-    def tearDown(self):
-        sys.setrecursionlimit(self._oldrecursionlimit)
-
-    
-    def constructEvilNestedExpression(self, n):
-        result = pair.list()
-        for i in xrange(n-1):
-            result = pair.list(result)
-        return result
-
-
-    def testSimpleExpressionToString(self):
-        self.assertEquals("5", toString(5))
-        self.assertEquals("x", toString(Symbol("x")))
+		
+		def constructEvilNestedExpression(self, n):
+			result = pair.list()
+			for i in xrange(n-1):
+				result = pair.list(result)
+			return result
 
 
-    def testSimpleListExpressionToString(self):
-        self.assertEquals("(x)", toString(pair.list(Symbol("x"))))
-        self.assertEquals("(1 2)", toString(pair.list(1, 2)))
-        self.assertEquals("(1 (2) 3)", toString(
-            pair.list(1, pair.list(2), 3)))
-        
-    def testDottedPairs(self):
-        self.assertEquals("(1 . 2)", toString(pair.cons(1, 2)))
+		def testSimpleExpressionToString(self):
+			self.assertEquals("5", toString(5))
+			self.assertEquals("x", toString(Symbol("x")))
 
 
-    def testNullList(self):
-        self.assertEquals("()", toString(pair.list()))
-        self.assertEquals("(() ())", toString(
-            pair.list(pair.list(), pair.list())))
+		def testSimpleListExpressionToString(self):
+			self.assertEquals("(x)", toString(pair.list(Symbol("x"))))
+			self.assertEquals("(1 2)", toString(pair.list(1, 2)))
+			self.assertEquals("(1 (2) 3)", toString(
+				pair.list(1, pair.list(2), 3)))
+			
+		def testDottedPairs(self):
+			self.assertEquals("(1 . 2)", toString(pair.cons(1, 2)))
 
 
-    def testTailRecursiveExpressionToString(self):
-        n = 1000
-        evilExpression = self.constructEvilNestedExpression(n)
-        self.assertEquals('(' * n + ')' * n,
-                          toString(evilExpression))
+		def testNullList(self):
+			self.assertEquals("()", toString(pair.list()))
+			self.assertEquals("(() ())", toString(
+				pair.list(pair.list(), pair.list())))
 
 
-    def testRecursiveExpressionsDontKillUs(self):
-        ## Makes sure that circular structures do not kill us.
-        loopyList = pair.cons(1, 1)
-        pair.setCdrBang(loopyList, loopyList)
-        self.assertEquals("(1 . [...])", toString(loopyList))
+		def testTailRecursiveExpressionToString(self):
+			n = 1000
+			evilExpression = self.constructEvilNestedExpression(n)
+			self.assertEquals('(' * n + ')' * n,
+							  toString(evilExpression))
 
 
-    def testLargerExpression(self):
-        program = parser.parse("""
- (define (factorial x)
-    (if (= x 0)
-         1
-         (* x (factorial (- x 1)))))""")
-        self.assertEquals("(define (factorial x) (if (= x 0) 1 (* x (factorial (- x 1)))))",
-                          toString(program))
+		def testRecursiveExpressionsDontKillUs(self):
+			## Makes sure that circular structures do not kill us.
+			loopyList = pair.cons(1, 1)
+			pair.setCdrBang(loopyList, loopyList)
+			self.assertEquals("(1 . [...])", toString(loopyList))
 
 
-if __name__ == '__main__':
-    unittest.main()
+		def testLargerExpression(self):
+			program = parser.parse("""
+	 (define (factorial x)
+		(if (= x 0)
+			 1
+			 (* x (factorial (- x 1)))))""")
+			self.assertEquals("(define (factorial x) (if (= x 0) 1 (* x (factorial (- x 1)))))",
+							  toString(program))
+
+
+	if __name__ == '__main__':
+		unittest.main()
+except ImportError:
+	pass

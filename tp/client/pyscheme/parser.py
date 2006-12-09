@@ -27,7 +27,6 @@ __license__ = "MIT License"
 import re
 from symbol import Symbol
 import pair
-import unittest
 import pogo
 
 
@@ -235,71 +234,75 @@ def parse(s):
 
 ######################################################################
 
-class ParserTests(unittest.TestCase):
-    def testAtomParsing(self):
-        self.assertEquals(42, parse("42"))
-        self.assertEquals("particle-man", parse('"particle-man"'))
+try:
+	import unittest
+	class ParserTests(unittest.TestCase):
+		def testAtomParsing(self):
+			self.assertEquals(42, parse("42"))
+			self.assertEquals("particle-man", parse('"particle-man"'))
 
 
-    def testBrokenNegativeExampleFromBaypiggies(self):
-        ## embarassing case that didn't work during the Baypiggies meeting
-        ## on September 9, 2004.  Doh!
-        self.assertEquals(-42, parse("-42")) 
-        
+		def testBrokenNegativeExampleFromBaypiggies(self):
+			## embarassing case that didn't work during the Baypiggies meeting
+			## on September 9, 2004.  Doh!
+			self.assertEquals(-42, parse("-42")) 
+			
 
-    def testLists(self):
-        self.assertEquals(pair.list(1, 2), parse("(1 2)"))
-        self.assertEquals(pair.list(1, 2, pair.list(3), 4),
-                          parse("(1 2 (3) 4)"))
-        self.assertEquals(pair.list(pair.list(pair.list())),
-                                          parse("((()))"))
+		def testLists(self):
+			self.assertEquals(pair.list(1, 2), parse("(1 2)"))
+			self.assertEquals(pair.list(1, 2, pair.list(3), 4),
+							  parse("(1 2 (3) 4)"))
+			self.assertEquals(pair.list(pair.list(pair.list())),
+											  parse("((()))"))
 
-    def testQuotation(self):
-        self.assertEquals(pair.list(Symbol("quote"),
-                                          Symbol("atom-man")),
-                          parse("'atom-man"))
-        self.assertEquals(pair.list(Symbol("quasiquote"),
-                                          Symbol("istanbul")),
-                          parse("`istanbul"))
+		def testQuotation(self):
+			self.assertEquals(pair.list(Symbol("quote"),
+											  Symbol("atom-man")),
+							  parse("'atom-man"))
+			self.assertEquals(pair.list(Symbol("quasiquote"),
+											  Symbol("istanbul")),
+							  parse("`istanbul"))
 
-        self.assertEquals(pair.list(Symbol("unquote"),
-                                          Symbol("constantinople")),
-                          parse(",constantinople"))
+			self.assertEquals(pair.list(Symbol("unquote"),
+											  Symbol("constantinople")),
+							  parse(",constantinople"))
 
-    def testDottedPair(self):
-        cons = pair.cons ## shortcut
-        self.assertEquals(cons(Symbol("alpha"), Symbol("beta")),
-                          parse("(alpha . beta)"))
-        self.assertEquals(cons(Symbol("a"),
-                               cons(Symbol("b"),
-                                    cons(cons(Symbol("c"), Symbol("d")),
-                                         pair.NIL))),
-                          parse("(a b (c . d))"))
-
-
-    def testQuotedList(self):
-        self.assertEquals(pair.list(Symbol("quote"),
-                                          pair.list(Symbol("foo"),
-                                                          Symbol("bar"))),
-                          parse("'(foo bar)"))
+		def testDottedPair(self):
+			cons = pair.cons ## shortcut
+			self.assertEquals(cons(Symbol("alpha"), Symbol("beta")),
+							  parse("(alpha . beta)"))
+			self.assertEquals(cons(Symbol("a"),
+								   cons(Symbol("b"),
+										cons(cons(Symbol("c"), Symbol("d")),
+											 pair.NIL))),
+							  parse("(a b (c . d))"))
 
 
-    def testEmptyList(self):
-        self.assertEquals(pair.NIL, parse("()"))
+		def testQuotedList(self):
+			self.assertEquals(pair.list(Symbol("quote"),
+											  pair.list(Symbol("foo"),
+															  Symbol("bar"))),
+							  parse("'(foo bar)"))
 
 
-    def testStressWithSuperNesting(self):
-        ## An evil test to see if this raises bad errors.
-        N = 1000
-        bigNestedList = pair.list()
-        for ignored in xrange(N-1):
-            bigNestedList = pair.list(bigNestedList)
-        try:
-            self.assertEquals(bigNestedList,
-                              parse( "(" * N + ")" * N))
-        except RuntimeError, e:
-            self.fail(e)
+		def testEmptyList(self):
+			self.assertEquals(pair.NIL, parse("()"))
 
 
-if __name__ == '__main__':
-    unittest.main()
+		def testStressWithSuperNesting(self):
+			## An evil test to see if this raises bad errors.
+			N = 1000
+			bigNestedList = pair.list()
+			for ignored in xrange(N-1):
+				bigNestedList = pair.list(bigNestedList)
+			try:
+				self.assertEquals(bigNestedList,
+								  parse( "(" * N + ")" * N))
+			except RuntimeError, e:
+				self.fail(e)
+
+
+	if __name__ == '__main__':
+		unittest.main()
+except ImportError:
+	pass

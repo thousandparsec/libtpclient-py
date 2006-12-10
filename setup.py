@@ -30,4 +30,5 @@ Includes support for:
 		'tp.client',
 		'tp.client.pyscheme',
 	],
+	zip_safe=False,
 )

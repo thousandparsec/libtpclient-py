@@ -235,8 +235,12 @@ class NetworkThread(CallThread):
 		return True
 
 	def CacheUpdate(self, callback):
-		self.application.cache.update(self.connection, callback)
-		self.application.cache.save()
+		try:
+			self.application.cache.update(self.connection, callback)
+			self.application.cache.save()
+		except Exception, e:
+			self.application.Post(self.NetworkFailureEvent(e))	
+			raise
 
 	def OnCacheDirty(self, evt):
 		"""\

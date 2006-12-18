@@ -50,7 +50,6 @@ class Media:
 	def connection(self):
 		if not hasattr(self, '_connection'):
 			type, host, self.basepath, t, t, t = urlparse.urlparse(self.serverurl)
-			print type, host, self.basepath
 			self._connection = getattr(httplib, "%sConnection" % type.upper())(host)
 		return self._connection
 	connection = property(connection)
@@ -141,9 +140,9 @@ class Media:
 		"""
 		Gets the Media description file from the http server.
 		"""
-		file = self.getfile(self.files, callback)
-		if file:
-			for line in gzip.GzipFile(file, 'r').readlines():
+		media_local = os.path.join(self.dir, self.files)
+		if os.path.exists(media_local):
+			for line in gzip.GzipFile(media_local, 'r').readlines():
 				line, timestamp = line.strip().split(' ')
 				timestamp = time.strptime(timestamp, "%Y%m%dT%H%M")[0:5]
 				for type in valid_types:

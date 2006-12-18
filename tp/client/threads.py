@@ -361,7 +361,6 @@ class MediaThread(CallThread):
 	def __init__(self, application):
 		CallThread.__init__(self)
 
-		print "Media.__init__"
 		self.application = application
 
 		self.todownload = {}
@@ -421,6 +420,7 @@ class MediaThread(CallThread):
 		"""\
 		Get a File, return directly or start a download.
 		"""
+		print "GetFile", file, timestamp
 		if self.cache.ready(file, timestamp):
 			print "File has already been downloaded.", file
 			return self.cache.getfile(file, timestamp)
@@ -430,8 +430,9 @@ class MediaThread(CallThread):
 		"""\
 		ConnectTo 
 		"""
+		print "Media ConnectTo", host, username
 		self.cache = Media(Cache.key(host, username), "http://darcs.thousandparsec.net/repos/media/client/")
-
+		self.cache.getfile(self.cache.files)
 		files = self.cache.getpossible(['png', 'gif'])
 		self.application.Post(self.MediaUpdateEvent(files))
 

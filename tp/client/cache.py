@@ -469,12 +469,21 @@ class Cache(object):
 
 		# Set the blocking so we can pipeline the requests
 		connection.setblocking(True)
+		empty = []
 		for id in toget:
 			frame = cache(id)
 
-			c(sb, "progress", \
-				message="Sending a request for all %s on %s.." % (sb, str(frame.name)))
-			getattr(connection, "get_%s" % sb)(id, range(0, getattr(frame, number)))
+			if getattr(frame, number) > 0:
+				c(sb, "progress", \
+					message="Sending a request for all %s on %s.." % (sb, str(frame.name)))
+				getattr(connection, "get_%s" % sb)(id, range(0, getattr(frame, number)))
+			else:
+				c(sb, "progress", \
+					message="Skipping requesting %s on %s as there are none!" % (sb, str(frame.name)))
+				empty.append(id)
+
+		for id in empty:
+			toget.remove(id)
 
 		# Wait for the response to the order requests
 		while len(toget) > 0:

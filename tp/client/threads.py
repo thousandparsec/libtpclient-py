@@ -151,7 +151,6 @@ class CallThread(threading.Thread):
 		"""\
 		Call a method in this thread.
 		"""
-		print "Call", self, method
 		self.tocall.append((method, args, kw))
 
 class NotImportantEvent(Exception):

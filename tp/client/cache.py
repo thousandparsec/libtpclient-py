@@ -440,7 +440,7 @@ class Cache(object):
 				message="Building two way tree of the universe for speed...")
 			def build(frame, parent=None, self=self):
 				if parent:
-					frame.parent = frame.id
+					frame.parent = parent.id
 
 				for id in frame.contains:
 					build(cache(id), frame)

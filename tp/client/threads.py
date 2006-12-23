@@ -530,3 +530,4 @@ class FinderThread(CallThread):
 		Post an Event the current thread.
 		"""
 		pass
+

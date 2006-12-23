@@ -329,6 +329,29 @@ class Cache(object):
 		self.features = connection.features()
 #		c("connecting", "finished")
 
+
+		c("orderdescs", "start", message="Getting order descriptions...")
+		c("orderdescs", "progess", message="Working out the number of order descriptions to get..")
+		ids = []
+		for id, time in connection.get_orderdesc_ids(iter=True):
+			if OrderDescs().has_key(id) and hasattr(OrderDescs()[id], "modify_time"):
+				if time < OrderDescs()[id].modify_time:
+					continue
+			ids.append(id)
+		c("orderdescs", "todownload", todownload=len(ids))
+
+		for id in ids:
+			desc = connection.get_orderdescs(id=id)[0]
+			# Did we download the order description okay?
+			if not failed(desc):
+				c("orderdescs", "downloaded", amount=1, \
+					message="Got order description %s (ID: %i) (last modified at %s)..." % (desc._name, id, time))
+				desc.register()
+			else:
+				c("orderdescs", "failure",
+					message="Failed to get order description with id, %i (last modified at %s)..." % (id, time))
+		c("orderdescs", "finished", message="Finished getting order descriptions...")
+
 		# Get all the objects
 		#############################################################################
 		#############################################################################
@@ -343,24 +366,6 @@ class Cache(object):
 		self.__getObjects(connection, "properties", callback)
 		#self.__getObjects(connection, "players",    callback)
 		self.__getObjects(connection, "resources",  callback)
-
-		## Get all the order descriptions
-		## -----------------------------------------------------------------------------------
-		#c("Getting order descriptions...", mode="order_descs")
-		#iter = connection.get_orderdesc_ids(iter=True)
-
-		#for id, time in iter:
-		#	c("Getting order description with id of %i (last modified at %s)..." % (id, df(time)), of=iter.total)
-
-		#	desc = connection.get_orderdescs(id=id)[0]
-
-		#	# Did we download the order description okay?
-		#	if not failed(desc):
-		#		desc.register()
-		#	else:
-		#		print "Warning: failed to get %i" % id, desc
-
-		#	c("Got order description with id of %i (last modified at %s)..." % (id, df(time)), add=1)
 
 		##get_all("Players", connection.get_player_ids, connection.get_players, 
 		##			self.players, constants.FEATURE_ORDERED_PLAYERS)

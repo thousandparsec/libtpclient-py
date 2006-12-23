@@ -487,7 +487,7 @@ class Cache(object):
 
 			if failed(result):
 				c(sb, "failure", \
-					message="Failed to get %s for %s (id: %s)..." % (sb, str(frame.name), frame.id))
+					message="Failed to get %s for %s (id: %s) (%s)..." % (sb, str(frame.name), frame.id, result[1]))
 				result = []
 			else:
 				c(sb, "downloaded", amount=1, \

@@ -483,6 +483,7 @@ class Cache(object):
 				empty.append(id)
 
 		for id in empty:
+			getattr(self, sb)[id] = (cache(id).modify_time, [])
 			toget.remove(id)
 
 		# Wait for the response to the order requests

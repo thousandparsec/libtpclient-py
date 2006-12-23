@@ -89,7 +89,7 @@ class Application(object):
 		"""\
 		Post an application wide event to every thread.
 		"""
-		self.finder.Call(self.network.Post, event)
+		self.finder.Call(self.finder.Post, event)
 		self.network.Call(self.network.Post, event)
 		self.media.Call(self.media.Post, event)
 		self.gui.Call(self.gui.Post, event)
@@ -517,3 +517,8 @@ class FinderThread(CallThread):
 		
 		pass
 
+	def Post(self, event):
+		"""
+		Post an Event the current thread.
+		"""
+		pass

@@ -154,6 +154,9 @@ class CallThread(threading.Thread):
 		print "Call", self, method
 		self.tocall.append((method, args, kw))
 
+class NotImportantEvent(Exception):
+	pass
+
 class NetworkThread(CallThread):
 	## These are network events
 	class NetworkFailureEvent(Exception):
@@ -363,13 +366,17 @@ class MediaThread(CallThread):
 			self.size = size
 			self.localfile = localfile
 
+		def __str__(self):
+			return "<%s %s>" % (self.__class__.__name__, self.file)
+		__repr__ = __str__
+
 	class MediaDownloadStartEvent(MediaDownload):
 		"""\
 		Posted when a piece of media is started being downloaded.
 		"""
 		pass
 
-	class MediaDownloadProgressEvent(MediaDownload):
+	class MediaDownloadProgressEvent(MediaDownload, NotImportantEvent):
 		"""\
 		Posted when a piece of media is being downloaded.
 		"""

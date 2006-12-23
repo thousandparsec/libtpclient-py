@@ -432,7 +432,7 @@ class Cache(object):
 		difference = having.difference(gotten)
 		for id in difference:
 			c(pn, "progress", \
-				message="Removing %s %s as it has disappeared..." % cache(id).name)
+				message="Removing %s %s as it has disappeared..." % (sn, cache(id).name))
 			del cache()[id]
 
 		if pn == "objects":

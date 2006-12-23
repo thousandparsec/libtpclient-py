@@ -392,7 +392,8 @@ class MediaThread(CallThread):
 		"""\
 		Posted when a piece of media started downloading but was canceled.
 		"""
-		pass
+		def __str__(self):
+			return "<%s>" % (self.__class__.__name__)
 
 	class MediaUpdateEvent:
 		"""\

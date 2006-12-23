@@ -24,18 +24,23 @@ class Application(object):
 	Calling accross threads requires you to use the .Call method on each thread - DO NOT call directly!
 	The cache can be accessed by either thread at any time - be careful.
 	"""
-	
+	MediaClass = None
+	FinderClass = None
+
 	def __init__(self):
-		print self.GUIClass, self.NetworkClass, self.MediaClass
+		print self.GUIClass, self.NetworkClass, self.MediaClass, self.FinderClass
 		self.gui = self.GUIClass(self)
 		self.network = self.NetworkClass(self)
 		if not self.MediaClass is None:
 			self.media = self.MediaClass(self)
 		else:
 			self.media = None
+		if not self.FinderClass is None:
+			self.finder = self.FinderClass(self)
+		else:
+			self.finder = None
 
-		print self.gui, self.network, self.media
-
+		print self.gui, self.network, self.media, self.finder
 		self.cache = None
 		
 		# Load the Configuration
@@ -46,8 +51,15 @@ class Application(object):
 		Set the application running.
 		"""
 		print "Application.Run"
-		print self.gui, self.network, self.media
+		print self.gui, self.network, self.media, self.finder
 		self.network.start()
+
+		if not self.finder is None:
+			print "Finder start..."
+			self.finder.start()
+		else:
+			print "Finder not starting..."
+
 		if not self.media is None:
 			print "Media Start..."
 			self.media.start()
@@ -77,6 +89,7 @@ class Application(object):
 		"""\
 		Post an application wide event to every thread.
 		"""
+		self.finder.Call(self.network.Post, event)
 		self.network.Call(self.network.Post, event)
 		self.media.Call(self.media.Post, event)
 		self.gui.Call(self.gui.Post, event)
@@ -89,6 +102,7 @@ class Application(object):
 			return
 		self.closing = True
 
+		self.finder.Cleanup()
 		self.network.Cleanup()
 		self.media.Cleanup()
 		self.gui.Cleanup()
@@ -137,6 +151,7 @@ class CallThread(threading.Thread):
 		"""\
 		Call a method in this thread.
 		"""
+		print "Call", self, method
 		self.tocall.append((method, args, kw))
 
 class NetworkThread(CallThread):
@@ -457,4 +472,48 @@ class MediaThread(CallThread):
 		self.cache.getfile(self.cache.files)
 		files = self.cache.getpossible(['png', 'gif'])
 		self.application.Post(self.MediaUpdateEvent(files))
+
+class FinderThread(CallThread):
+	## These are network events
+	class FoundServerEvent(Exception):
+		"""\
+		Raised when the finder finds a server.
+		"""
+		pass
+
+	class FoundLocalServerEvent(FoundServerEvent):
+		"""\
+		Raised when the finder finds a local server.
+		"""
+		pass
+
+	class FoundRemoteServerEvent(FoundServerEvent):
+		"""\
+		Raised when the finder finds a remote server.
+		"""
+		pass
+
+	class FinderErrorEvent(Exception):
+		"""\
+		Raised when the finder has an error finding servers.
+		"""
+		pass
+
+	class FinderFinishedEvent(Exception):
+		"""\
+		Raised when the finder has finished searching for new servers.
+		"""
+		pass
+
+	def __init__(self, application):
+		CallThread.__init__(self)
+
+		self.application = application
+		self.connection = Connection()
+
+	def refresh(self):
+		# Download the meta server page...
+
+		
+		pass
 

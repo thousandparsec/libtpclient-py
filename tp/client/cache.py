@@ -21,7 +21,7 @@ except NameError:
 	from sets import Set as set
 
 # Other library imports
-from tp.netlib import Connection, failed, constants
+from tp.netlib import Connection, failed, constants, objects
 from tp.netlib.objects import Header, Description, OrderDescs, DynamicBaseOrder
 
 # Local imports
@@ -292,14 +292,9 @@ class Cache(object):
 
 		The callback function is called in the following way,
 
-		callback(<message string>, group=<mode>)
-		callback(<message string>, group=<mode>, total=<total>)
-		callback(<message string>, group=<mode>, number=<number>)
+		callback(group=<mode>, state=<state>, message=<message>)
 
 		The message string is a human readable message about what is happening.
-
-		total is the total number of objects in this group
-		number is the current object which is being downloaded
 
 		Group is the current group of things been updated the possible choices are,
 			objects
@@ -313,8 +308,16 @@ class Cache(object):
 			properties
 			players
 			resources
-		"""
 
+		State is one of the following,
+			start		- no more arguments
+			todownload	- total, the total number of things to be downloaded
+			progress	- some sort of undetermined progress occured
+			failure		- some sort of failure when downloading occured
+			downloaded	- amount, the number of things which have been downloaded
+			finished	- no more arguments
+		"""
+		c = callback
 		# FIXME: We should restart with an empty cache if the following has happened
 		#	FIXME: This should compare any read-only attributes and see if they have change
 		#	FIXME: This should check the current turn and see if the turn is strange (IE gone back in time)
@@ -322,55 +325,156 @@ class Cache(object):
 
 
 		# Get the features this server support
-		callback("Looking for supported features...", mode="connecting")
+#		c("connecting", "todownload", message="Looking for supported features...")
 		self.features = connection.features()
+#		c("connecting", "finished")
 
 		# Get all the objects
-		# -----------------------------------------------------------------------------------
-		callback("Getting objects...", mode="objects")
+		#############################################################################
+		#############################################################################
+		toget = self.__getObjects(connection,   "objects", callback)
+		self.__getSubObjects(connection, toget, "objects", "orders", "order_number", callback)
+		toget = self.__getObjects(connection,   "boards", callback)
+		self.__getSubObjects(connection, toget, "boards",  "messages", "number", callback)
+
+		self.__getObjects(connection, "categories", callback)
+		self.__getObjects(connection, "designs",    callback)
+		self.__getObjects(connection, "components", callback)
+		self.__getObjects(connection, "properties", callback)
+		#self.__getObjects(connection, "players",    callback)
+		self.__getObjects(connection, "resources",  callback)
+
+		## Get all the order descriptions
+		## -----------------------------------------------------------------------------------
+		#c("Getting order descriptions...", mode="order_descs")
+		#iter = connection.get_orderdesc_ids(iter=True)
+
+		#for id, time in iter:
+		#	c("Getting order description with id of %i (last modified at %s)..." % (id, df(time)), of=iter.total)
+
+		#	desc = connection.get_orderdescs(id=id)[0]
+
+		#	# Did we download the order description okay?
+		#	if not failed(desc):
+		#		desc.register()
+		#	else:
+		#		print "Warning: failed to get %i" % id, desc
+
+		#	c("Got order description with id of %i (last modified at %s)..." % (id, df(time)), add=1)
+
+		##get_all("Players", connection.get_player_ids, connection.get_players, 
+		##			self.players, constants.FEATURE_ORDERED_PLAYERS)
+		#self.players[0] = connection.get_players(0)[0]
+		##print self.players
+		#return
+
+
+	def __getObjects(self, connection, plural_name, callback):
+		"""\
+		Get a thing which has a container.
+		"""
+		c = callback
+		pn = plural_name
+
+		if pn[-3:] == 'ies':
+			sn = pn[:-3]+'y'
+		elif pn[-1:] == 's':
+			sn = pn[:-1]
+		else:
+			sn = pn
+
+		def cache(id=None, self=self, pn=pn):
+			if id==None:
+				return getattr(self, pn)
+			else:
+				return getattr(self, pn)[id]
+
+		c(pn, "start", message="Getting %s..." % pn)
 
 		# Figure out the IDs to download
+		c(pn, "progess", message="Working out the number of %s to get.." % pn)
 		toget = []
 		ids = []
-		for id, time in connection.get_object_ids(iter=True):
+		for id, time in getattr(connection, "get_%s_ids" % sn)(iter=True):
 			ids.append(id)
-			if not self.objects.has_key(id) or time > self.objects.times[id]:
+			if not cache().has_key(id) or time > cache().times[id]:
 				toget.append(id)
-# FIXME: This doesn't work if an object disappears...
-#			elif constants.FEATURE_ORDERED_OBJECT in self.features:
-#				break
+			# FIXME: This doesn't work if an thing disappears...
+			#elif constants.FEATURE_ORDERED_OBJECT in self.features:
+			#	break
 
 		# Callback function
-		def OnPacket(p, callback=callback):
-			if not failed(p):
-				callback("Got object with ID of %i (last modified at %s)..." % (p.id, df(p.modify_time)), add=1)
+		def OnPacket(p, c=c, pn=pn, sn=sn, objects=objects):
+			if isinstance(p, getattr(objects, sn.title())):
+				c(pn, "downloaded", amount=1, \
+					message="Got %s %s (id: %i) (last modified at %s)..." % (sn, p.name, p.id, p.modify_time))
+
+		# Download the XXX
+		c(pn, "todownload", \
+			message="Have %i %s to get..." % (len(toget), pn), todownload=len(toget))
+		frames = getattr(connection, "get_%s" % pn)(ids=toget, callback=OnPacket)
+
+		for id, frame in zip(toget, frames):
+			if not failed(frame):
+				cache()[id] = (frame.modify_time, frame)
+			elif cache().has_key(id):
+				c(pn, "failure", \
+					message="Failed to get the %s which was previously called %s." % (sn, cache(id).name))
+				del cache()[id]
 			else:
-				callback("Get object failed...", add=1)
+				c(pn, "failure", \
+					message="Failed to get the %s with id %s." % (sn, id))
 
-		# Download the objects
-		callback("Have %i objects to get..." % len(toget), of=len(toget))
-		frames = connection.get_objects(ids=toget, callback=OnPacket)
-		callback("Gotten all objects...")
+		c(pn, "progress", message="Cleaning up %s which have disappeared..." % pn)
+		# Check for XXX which no longer exist..
+		gotten = set(ids)
+		having = set(cache().keys())
+		difference = having.difference(gotten)
+		for id in difference:
+			c(pn, "progress", \
+				message="Removing %s %s as it has disappeared..." % cache(id).name)
+			del cache()[id]
 
-		# Set the blocking so we can pipeline the order requests
+		if pn == "objects":
+			c(pn, "progress", \
+				message="Building two way tree of the universe for speed...")
+			def build(frame, parent=None, self=self):
+				if parent:
+					frame.parent = frame.id
+
+				for id in frame.contains:
+					build(cache(id), frame)
+			build(cache(0))
+
+		c(pn, "finished", message="Gotten all %s..." % pn)
+
+		return toget
+
+	def __getSubObjects(self, connection, toget, plural_name, subname, number, callback=None):
+		c = callback
+		pn = plural_name
+		sn = plural_name[:-1]
+
+		def cache(id=None, self=self, pn=pn):
+			if id==None:
+				return getattr(self, pn)
+			else:
+				return getattr(self, pn)[id]
+
+		c = callback
+		sb = subname
+
+		c(sb, "start", message="Getting %s.." % sb)
+		c(sb, "todownload", message="Have to get %s for %i %s.." % (sb, len(toget), pn), todownload=len(toget))
+
+		# Set the blocking so we can pipeline the requests
 		connection.setblocking(True)
-		for id, object in zip(toget, frames):
+		for id in toget:
+			frame = cache(id)
 
-			# Did we download the object okay?
-			if failed(object):
-				# Clean up the object
-				if self.objects.has_key(id):
-					del self.objects[id]
-
-					if self.orders.has_key(id):
-						del self.orders[id]
-				continue
-
-			self.objects[id] = (object.modify_time, object)
-
-			# Pipeline the get order requests
-			self.orders[id] = (object.modify_time, [])
-			connection.get_orders(id, range(0, object.order_number))
+			c(sb, "progress", \
+				message="Sending a request for all %s on %s.." % (sb, str(frame.name)))
+			getattr(connection, "get_%s" % sb)(id, range(0, getattr(frame, number)))
 
 		# Wait for the response to the order requests
 		while len(toget) > 0:
@@ -379,186 +483,16 @@ class Cache(object):
 				result = connection.poll()
 
 			id = toget.pop(0)
-			print id, repr(result)
+			frame = cache(id)
 
 			if failed(result):
-				continue
-
-			self.orders[id] = (self.objects[id].modify_time, result)
-
-		# Check for objects which no longer exist..
-		# FIXME: There should be a better way to do this
-		if len(ids) != len(self.objects):
-			gotten = set(ids)
-			having = set(self.objects.keys())
-
-			difference = having.difference(gotten)
-			print "diff", difference
-			for id in difference:
-				del self.objects[id]
-				if self.orders.has_key(id):
-					del self.orders[id]
+				c(sb, "failure", \
+					message="Failed to get %s for %s (id: %s)..." % (sb, str(frame.name), frame.id))
+			else:
+				c(sb, "downloaded", amount=1, \
+					message="Got %i %s for %s (id: %s)..." % (len(result), sb, str(frame.name), frame.id))
+				getattr(self, sb)[id] = (cache(id).modify_time, result)
 
 		connection.setblocking(False)
+		c(sb, "finished", message="Gotten all the %s.." % sb)
 
-		#print "Building two way Universe Tree for speed"
-		def build(object, parent=None, self=self):
-			if parent:
-				object.parent = parent.id
-			for id in object.contains:
-				build(self.objects[id], object)
-		build(self.objects[0])
-
-		# Get all the boards 
-		# -----------------------------------------------------------------------------------
-		callback("Getting boards...", mode="boards")
-
-		# Figure out the IDs to download
-		toget = []
-		ids = []
-		for id, time in connection.get_board_ids(iter=True):
-			ids.append(id)
-			if not self.boards.has_key(id) or time > self.boards.times[id]:
-				toget.append(id)
-# FIXME: This doesn't work if an object disappears...
-#			elif constants.FEATURE_ORDERED_BOARD in self.features:
-#				break
-
-		# Callback function
-		def OnPacket(p, callback=callback):
-			if not failed(p):
-				callback("Got board with ID of %i (last modified at %s)..." % (p.id, df(p.modify_time)), add=1)
-			else:
-				callback("Get board failed...", add=1)
-
-		# Download the boards
-		callback("Have %i boards to get..." % len(toget), of=len(toget))
-		frames = []
-		if len(toget) > 0:
-			frames = connection.get_boards(ids=toget, callback=OnPacket)
-		callback("Gotten all boards...")
-
-		# Set the blocking so we can pipeline the order requests
-		connection.setblocking(True)
-
-		for id, board in zip(toget, frames):
-			# Did we download the board okay?
-			if failed(board):
-				# Clean up the board
-				if self.boards.has_key(id):
-					del self.boards[id]
-
-					if self.messages.has_key(id):
-						del self.messages[id]
-				continue
-
-			self.boards[id] = (time, board)
-
-			# Pipeline the get order requests
-			self.messages[id] = (time, [])
-			connection.get_messages(id, range(0, board.number))
-
-		while len(toget) > 0:
-			result = None
-			while result is None:
-				result = connection.poll()
-
-			id = toget.pop(0)
-			print id, repr(result)
-
-			if failed(result):
-				continue
-
-			self.messages[id] = (self.boards[id].modify_time, result)
-
-		connection.setblocking(False)
-
-		# Check for boards which no longer exist..
-		# FIXME: There should be a better way to do this
-		if len(ids) != len(self.boards):
-			gotten = set(ids)
-			having = set(self.boards.keys())
-
-			difference = having.difference(gotten)
-			for id in difference:
-				del self.boards[id]
-				if self.messages.has_key(id):
-					del self.messages[id]
-
-		# Get all the order descriptions
-		# -----------------------------------------------------------------------------------
-		callback("Getting order descriptions...", mode="order_descs")
-		iter = connection.get_orderdesc_ids(iter=True)
-
-		for id, time in iter:
-			callback("Getting order description with id of %i (last modified at %s)..." % (id, df(time)), of=iter.total)
-
-			desc = connection.get_orderdescs(id=id)[0]
-
-			# Did we download the order description okay?
-			if not failed(desc):
-				desc.register()
-			else:
-				print "Warning: failed to get %i" % id, desc
-
-			callback("Got order description with id of %i (last modified at %s)..." % (id, df(time)), add=1)
-
-		def get_all(name, get_ids, get, cache, feature, callback=callback):
-			callback("Getting %s..." % name)
-
-			# Figure out the IDs to download
-			toget = []
-			for id, time in get_ids(iter=True):
-				if not cache.has_key(id) or time > cache.times[id]:
-					toget.append(id)
-				elif feature in self.features:
-					break
-
-			# If there is nothing left to do
-			if len(toget) == 0:
-				return
-
-			# Callback function
-			def OnPacket(p, callback=callback):
-				if not failed(p):
-					callback("Got %s with ID of %i (last modified at %s)..." % (name, p.id, df(p.modify_time)), add=1)
-				else:
-					callback("Getting %s failed..." % name, add=1)
-
-			# Download the objects
-			callback("Have %i %s to get..." % (len(toget), name), of=len(toget))
-			frames = get(ids=toget, callback=OnPacket)
-			callback("Gotten all %s..." % name)
-
-			for id, object in zip(toget, frames):
-				# Did we download the object okay?
-				if failed(object):
-					# Clean up the object
-					if cache.has_key(id):
-						del cache[id]
-					continue
-
-				cache[id] = (time, object)
-
-		callback("Getting design objects...", mode="designs")
-		get_all("Categories", connection.get_category_ids, connection.get_categories, 
-					self.categories, constants.FEATURE_ORDERED_CATEGORY)
-
-		get_all("Designs", connection.get_design_ids, connection.get_designs, 
-					self.designs, constants.FEATURE_ORDERED_DESIGN)
-
-		get_all("Components", connection.get_component_ids, connection.get_components, 
-					self.components, constants.FEATURE_ORDERED_COMPONENT)
-
-		get_all("Properties", connection.get_property_ids, connection.get_properties, 
-					self.properties, constants.FEATURE_ORDERED_PROPERTY)
-
-		callback("Getting all other objects...", mode="remaining")
-		get_all("Resources", connection.get_resource_ids, connection.get_resources, 
-					self.resources, constants.FEATURE_ORDERED_RESOURCE)
-
-		#get_all("Players", connection.get_player_ids, connection.get_players, 
-		#			self.players, constants.FEATURE_ORDERED_PLAYERS)
-		self.players[0] = connection.get_players(0)[0]
-		#print self.players
-		return

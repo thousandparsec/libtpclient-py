@@ -214,6 +214,8 @@ class Cache(object):
 			elif evt.action == "remove":
 				del d[evt.slot]
 
+			# FIXME: This should update order_number, number on Object/Board..
+
 		evt.__class__ = self.CacheUpdateEvent
 
 	def load(self):

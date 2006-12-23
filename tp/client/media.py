@@ -4,6 +4,7 @@ import shutil
 import stat
 import string
 
+import locale
 import socket
 import httplib
 import urllib, urlparse
@@ -12,6 +13,12 @@ import time
 import gzip
 
 from cache import Cache
+
+def strptime(*args, **kw):
+	locale.setlocale(locale.LC_ALL, 'C')
+	r = time.strptime(*args, **kw)
+	locale.resetlocale(locale.LC_ALL)
+	return r
 
 class Media:
 	def __init__(self, key, serverurl, configdir=None, mediatypes=[], new=False, noconnect=False):
@@ -72,7 +79,7 @@ class Media:
 #			for key, value in self.connection.getresponse().getheaders():
 #				headers[key] = value
 
-			remotedate = time.strptime(headers['last-modified'], "%a, %d %b %Y %H:%M:%S %Z")[0:5]
+			remotedate = strptime(headers['last-modified'], "%a, %d %b %Y %H:%M:%S %Z")[0:5]
 			localdate = eval(open(media_local + ".timestamp").read())
 
 			print "Remote Date", remotedate
@@ -127,7 +134,8 @@ class Media:
 
 		try:
 			(trash, message) = self.getter.retrieve(media_url, media_local, callback)
-			remotedate = time.strptime(message.getheader('last-modified'), "%a, %d %b %Y %H:%M:%S %Z")[0:5]
+
+			remotedate = strptime(message.getheader('last-modified'), "%a, %d %b %Y %H:%M:%S %Z")[0:5]
 
 			open(media_local + ".timestamp", 'w').write(repr(remotedate))
 			return media_local
@@ -144,7 +152,7 @@ class Media:
 		if os.path.exists(media_local):
 			for line in gzip.GzipFile(media_local, 'r').readlines():
 				line, timestamp = line.strip().split(' ')
-				timestamp = time.strptime(timestamp, "%Y%m%dT%H%M")[0:5]
+				timestamp = strptime(timestamp, "%Y%m%dT%H%M")[0:5]
 				for type in valid_types:
 					if line.endswith(type):
 						yield line, timestamp

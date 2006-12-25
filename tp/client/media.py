@@ -14,11 +14,7 @@ import gzip
 
 from cache import Cache
 
-def strptime(*args, **kw):
-	locale.setlocale(locale.LC_ALL, 'C')
-	r = time.strptime(*args, **kw)
-	locale.resetlocale(locale.LC_ALL)
-	return r
+from strptime import strptime
 
 class Media:
 	def __init__(self, key, serverurl, configdir=None, mediatypes=[], new=False, noconnect=False):

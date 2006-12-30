@@ -484,35 +484,69 @@ class MediaThread(CallThread):
 		files = self.cache.getpossible(['png', 'gif'])
 		self.application.Post(self.MediaUpdateEvent(files))
 
+from tp.netlib.discover import LocalBrowser as LocalBrowserB
+from tp.netlib.discover import RemoteBrowser as RemoteBrowserB
+class LocalBrowser(LocalBrowserB, threading.Thread):
+	def __init__(self, *args, **kw):
+		threading.Thread.__init__(self)
+		LocalBrowserB.__init__(self, *args, **kw)
+
+class RemoteBrowser(RemoteBrowserB, threading.Thread):
+	def __init__(self, *args, **kw):
+		threading.Thread.__init__(self)
+		RemoteBrowserB.__init__(self, *args, **kw)
+	
 class FinderThread(CallThread):
 	## These are network events
-	class FoundServerEvent(Exception):
+	class GameEvent(object):
+		def __init__(self, game):
+			self.game = game
+
+	class LostGameEvent(GameEvent):
 		"""\
-		Raised when the finder finds a server.
+		Raised when the finder loses a game.
 		"""
 		pass
 
-	class FoundLocalServerEvent(FoundServerEvent):
+	class FoundGameEvent(GameEvent):
 		"""\
-		Raised when the finder finds a local server.
+		Raised when the finder finds a game.
+		"""
+		pass
+	
+	class LostLocalGameEvent(FoundGameEvent):
+		"""\
+		Raised when the finder loses a local game.
 		"""
 		pass
 
-	class FoundRemoteServerEvent(FoundServerEvent):
+	class FoundLocalGameEvent(FoundGameEvent):
 		"""\
-		Raised when the finder finds a remote server.
+		Raised when the finder finds a local game.
+		"""
+		pass
+	
+	class LostRemoteGameEvent(FoundGameEvent):
+		"""\
+		Raised when the finder loses a remote game.
+		"""
+		pass
+
+	class FoundRemoteGameEvent(FoundGameEvent):
+		"""\
+		Raised when the finder finds a remote game.
 		"""
 		pass
 
 	class FinderErrorEvent(Exception):
 		"""\
-		Raised when the finder has an error finding servers.
+		Raised when the finder has an error finding games.
 		"""
 		pass
 
 	class FinderFinishedEvent(Exception):
 		"""\
-		Raised when the finder has finished searching for new servers.
+		Raised when the finder has finished searching for new games.
 		"""
 		pass
 
@@ -520,13 +554,40 @@ class FinderThread(CallThread):
 		CallThread.__init__(self)
 
 		self.application = application
-		self.connection = Connection()
 
-	def refresh(self):
-		# Download the meta server page...
+		self.local  = LocalBrowser()
+		self.local.GameFound  = self.FoundLocalGame
+		self.local.GameGone   = self.LostLocalGame
 
-		
-		pass
+		self.remote = RemoteBrowser()
+		self.remote.GameFound = self.FoundRemoteGame
+		self.remote.GameGone  = self.LostRemoteGame
+
+	def FoundLocalGame(self, game):
+		print "FoundLocalGame", self, game
+		self.application.Post(FinderThread.FoundLocalGameEvent(game))
+
+	def FoundRemoteGame(self, game):
+		print "FoundRemoteGame", self, game
+		self.application.Post(FinderThread.FoundRemoveGameEvent(game))
+
+	def LostLocalGame(self, game):
+		print "LostLocalGame", self, game
+		self.application.Post(FinderThread.LostLocalGameEvent(game))
+
+	def LostRemoteGame(self, game):
+		print "LostRemoteGame", self, game
+		self.application.Post(FinderThread.LostRemoveGameEvent(game))
+
+	def Games(self):
+		"""\
+		Get all the currently known games.
+		"""
+		return (self.local.games.values(), self.remote.games.values())
+
+	def Cleanup(self):
+		self.local.exit()
+		self.remote.exit()
 
 	def Post(self, event):
 		"""
@@ -534,3 +595,6 @@ class FinderThread(CallThread):
 		"""
 		pass
 
+	def run(self):
+		self.local.start()
+		self.remote.start()

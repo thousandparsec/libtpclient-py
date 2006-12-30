@@ -84,7 +84,9 @@ class Media:
 			if remotedate <= localdate:
 				return False
 			return True
-		except (socket.error, IOError), e:
+		except IOError, e:
+			return True
+		except socket.error, e:
 			print e
 			return False
 

@@ -89,8 +89,8 @@ class Application(object):
 		"""\
 		Post an application wide event to every thread.
 		"""
-		self.finder.Call(self.finder.Post, event)
 		self.network.Call(self.network.Post, event)
+		self.finder.Call(self.finder.Post, event)
 		self.media.Call(self.media.Post, event)
 		self.gui.Call(self.gui.Post, event)
 
@@ -221,13 +221,18 @@ class NetworkThread(CallThread):
 				s += _("This could be because the server is down or there is a problem with the network.\n")
 				self.application.Post(self.NetworkFailureEvent(s))
 				return False
-		except socket.error, e:
-			self.application.Post(self.NetworkFailureEvent(e.args[1]))
+		except (IOError, socket.error), e:
+			s  = _("The client could not connect to the host.\n")
+			s += _("This could be because the server is down or you mistyped the server address.\n")
+			self.application.Post(self.NetworkFailureEvent(s))
 			return False
 		callback("connecting", "downloaded", "Successfully connected to the host...", amount=1)
 			
-		callback("connecting", "progress", "Looking for Thousand Parsec Server...")
-		if failed(self.connection.connect(("libtpclient-py/%s.%s.%s " % version)+cs)):
+		try:
+			callback("connecting", "progress", "Looking for Thousand Parsec Server...")
+			if failed(self.connection.connect(("libtpclient-py/%s.%s.%s " % version)+cs)):
+				raise socket.error("")
+		except (IOError, socket.error), e:
 			s  = _("The client connected to the host but it did not appear to be a Thousand Parsec server.\n")
 			s += _("This could be because the server is down or the connection details are incorrect.\n")
 			self.application.Post(self.NetworkFailureEvent(s))
@@ -258,7 +263,6 @@ class NetworkThread(CallThread):
 			
 			callback("connecting", "progress", "Trying to Login to the server...")
 			if failed(self.connection.login(username, password)):
-				print "Logining failed!"
 				s  = _("The client connected to the host but could not login because the username of password was incorrect.\n")
 				s += _("This could be because you are connecting to the wrong server or mistyped the username or password.\n")
 				self.application.Post(self.NetworkFailureEvent(s))

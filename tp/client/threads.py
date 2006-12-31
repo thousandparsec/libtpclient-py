@@ -583,7 +583,7 @@ class FinderThread(CallThread):
 		"""\
 		Get all the currently known games.
 		"""
-		return (self.local.games.values(), self.remote.games.values())
+		return self.local.games, self.remote.games
 
 	def Cleanup(self):
 		self.local.exit()

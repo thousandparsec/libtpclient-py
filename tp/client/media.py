@@ -4,7 +4,6 @@ import shutil
 import stat
 import string
 
-import locale
 import socket
 import httplib
 import urllib, urlparse
@@ -191,3 +190,4 @@ if __name__ == "__main__":
 
 	import pprint
 	pprint.pprint(files)
+

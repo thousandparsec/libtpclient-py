@@ -569,7 +569,7 @@ class FinderThread(CallThread):
 
 	def FoundRemoteGame(self, game):
 		print "FoundRemoteGame", self, game
-		self.application.Post(FinderThread.FoundRemoveGameEvent(game))
+		self.application.Post(FinderThread.FoundRemoteGameEvent(game))
 
 	def LostLocalGame(self, game):
 		print "LostLocalGame", self, game
@@ -577,7 +577,7 @@ class FinderThread(CallThread):
 
 	def LostRemoteGame(self, game):
 		print "LostRemoteGame", self, game
-		self.application.Post(FinderThread.LostRemoveGameEvent(game))
+		self.application.Post(FinderThread.LostRemoteGameEvent(game))
 
 	def Games(self):
 		"""\

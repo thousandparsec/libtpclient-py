@@ -369,12 +369,9 @@ class Cache(object):
 		#self.__getObjects(connection, "players",    callback)
 		self.__getObjects(connection, "resources",  callback)
 
-		##get_all("Players", connection.get_player_ids, connection.get_players, 
-		##			self.players, constants.FEATURE_ORDERED_PLAYERS)
-		#self.players[0] = connection.get_players(0)[0]
-		##print self.players
-		#return
-
+		c("players", "start", message="Getting your player object...")
+		self.players[0] = connection.get_players(0)[0]
+		c("players", "finished", message="Gotten your player object...")
 
 	def __getObjects(self, connection, plural_name, callback):
 		"""\

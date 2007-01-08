@@ -5,8 +5,10 @@ import copy
 import base64
 import pprint
 import struct
+import traceback
 import cPickle as pickle
 from datetime import datetime
+
 def df(time):
 	if type(time) in (float, int, long):
 		return datetime.utcfromtimestamp(time).strftime('%c')
@@ -154,14 +156,16 @@ class Cache(object):
 		key = Cache.configkey(key)
 
 		self.file = os.path.join(configdir, "cache.%s" % (key,))
+		print "Cache file", self.file
 		if os.path.exists(self.file) and not new:
 			# Load the previously cached status
 			print "Loading previous saved data (from %s)." % (self.file,)
 			try:
 				self.load()
 				return
-			except (IOError, EOFError), e:
+			except (IOError, EOFError, KeyError), e:
 				print e
+				traceback.print_exc()
 				print "Unable to load the data, saved cache must be corrupt."
 		print "Creating the Cache fresh (%s)." % (self.file,)
 		self.new()
@@ -229,7 +233,10 @@ class Cache(object):
 			raise IOError("The cache is not of this version! (It's version %s)" % (v,))
 
 		# First load the pickle
-		self.__dict__ = pickle.load(f)
+		d = pickle.load(f)
+		if d.has_key('file'):
+			del d['file']				# Stop the file being loaded
+		self.__dict__.update(d)
 
 		# Now load the order cache
 		self.orders = ChangeDict()
@@ -252,6 +259,9 @@ class Cache(object):
 			else:
 				# Get the ID number
 				id, = struct.unpack('!Q', f.read(8))
+				if not self.objects.has_key(id):
+					print "Cache Error: Found order (%s) for non-existant object (%s). " % (repr(p), id) 
+					continue
 
 				if not self.orders.has_key(id):
 					self.orders[id] = (self.objects.times[id], [])
@@ -261,15 +271,15 @@ class Cache(object):
 			if not self.orders.has_key(id):
 				self.orders[id] = (self.objects.times[id], [])
 
-		#pprint.pprint(self.__dict__)
-
 	def save(self):
 		"""\
 		"""
-		#pprint.pprint(self.__dict__)
+		# We don't want this filename appearing in the cace
+		file = self.file
+		del self.file
 
 		# Save the cache
-		f = open(self.file, 'wb')
+		f = open(file, 'wb')
 		f.write(struct.pack('!I', self.version))
 
 		p = copy.copy(self.__dict__)
@@ -284,9 +294,14 @@ class Cache(object):
 
 		# Save each order now
 		for id in self.orders.keys():
-			for order in self.orders[id]:
-				f.write(str(order))
-				f.write(struct.pack('!Q', id))
+			if self.objects.has_key(id):
+				for order in self.orders[id]:
+					f.write(str(order))
+					f.write(struct.pack('!Q', id))
+		f.close()
+
+		# Restore the file
+		self.file = file
 
 	def update(self, connection, callback):
 		"""\
@@ -325,12 +340,10 @@ class Cache(object):
 		#	FIXME: This should check the current turn and see if the turn is strange (IE gone back in time)
 		#	FIXME: Should check that none of the Order definitions have changed
 
-
 		# Get the features this server support
 #		c("connecting", "todownload", message="Looking for supported features...")
 		self.features = connection.features()
 #		c("connecting", "finished")
-
 
 		c("orderdescs", "start", message="Getting order descriptions...")
 		c("orderdescs", "progess", message="Working out the number of order descriptions to get..")

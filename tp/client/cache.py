@@ -521,6 +521,12 @@ class Cache(object):
 					message="Got %i %s for %s (id: %s)..." % (len(result), sb, str(frame.name), frame.id))
 			getattr(self, sb)[id] = (cache(id).modify_time, result)
 
+		c(sb, "progress", message="Cleaning up any stray %s.." % sb)
+		for id in getattr(self, sb).keys():
+			if not cache().has_key(id):
+				c(sb, "progress", message="Found stray %s for %s.." % (sb, id))
+				del getattr(self, sb)[id]
+
 		connection.setblocking(False)
 		c(sb, "finished", message="Gotten all the %s.." % sb)
 

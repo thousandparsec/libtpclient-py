@@ -185,6 +185,7 @@ class NetworkThread(CallThread):
 		self.connection = Connection()
 	
 	def error(self, error):
+		traceback.print_exc()
 		if isinstance(error, (IOError, socket.error)):
 			s  = _("There was an unknown network error.\n")
 			s += _("Any changes since last save have been lost.\n")

@@ -35,7 +35,7 @@ class Cache(object):
 
 	It can be pickled and restored at a later date to preserve the data accross application runs.
 	"""
-	version = 3
+	version = 4
 
 	class CacheEvent(object):
 		"""\

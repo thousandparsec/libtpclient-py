@@ -1,0 +1,17 @@
+Source: libtpclient-py
+Section: python
+XS-Python-Version: >=2.4
+Priority: optional
+Maintainer: Paul Hampson <Paul.Hampson@Pobox.com>
+Build-Depends-Indep: python-central (>= 0.5.6), python-setuptools (>= 0.6b3-1)
+Build-Depends: debhelper (>= 5.0.38)
+Standards-Version: 3.7.2
+
+Package: python-tp-client
+Architecture: all
+Depends: ${python:Depends}, python-tp-netlib
+XB-Python-Version: ${python:Versions}
+Recommends: python-pyopenssl | python-m2crypto
+Description: Thousand Parsec network protocol library
+ This package provides the tp.client Python library, providing a common
+ codeset for various Thousand Parsec clients

@@ -1,0 +1,6 @@
+libtpclient-py (0.2.1-1) unstable; urgency=low
+
+  * Initial release.
+  * Packaging based on pyparallel 0.2-5
+
+ -- Paul Hampson <Paul.Hampson@Pobox.com>  Thu, 18 Jan 2007 16:44:53 +1100

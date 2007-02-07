@@ -354,8 +354,10 @@ class Cache(object):
 
 		# Set the blocking so we can pipeline the order requests
 		connection.setblocking(True)
-		for id, object in zip(toget, frames):
+		if failed(frames):
+			raise IOError("Failed to get objects..")
 
+		for id, object in zip(toget, frames):
 			# Did we download the object okay?
 			if failed(object):
 				# Clean up the object

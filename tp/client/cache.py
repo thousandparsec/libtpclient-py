@@ -431,6 +431,9 @@ class Cache(object):
 			message="Have %i %s to get..." % (len(toget), pn), todownload=len(toget))
 		frames = getattr(connection, "get_%s" % pn)(ids=toget, callback=OnPacket)
 
+		if failed(frames):
+			raise IOError("Strange error occured, unable to request %s." % pn)
+
 		for id, frame in zip(toget, frames):
 			if not failed(frame):
 				cache()[id] = (frame.modify_time, frame)

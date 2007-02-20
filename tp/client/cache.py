@@ -371,9 +371,11 @@ class Cache(object):
 		#############################################################################
 		#############################################################################
 		toget = self.__getObjects(connection,   "objects", callback)
-		self.__getSubObjects(connection, toget, "objects", "orders", "order_number", callback)
+		if toget > 0:
+			self.__getSubObjects(connection, toget, "objects", "orders", "order_number", callback)
 		toget = self.__getObjects(connection,   "boards", callback)
-		self.__getSubObjects(connection, toget, "boards",  "messages", "number", callback)
+		if toget > 0:
+			self.__getSubObjects(connection, toget, "boards",  "messages", "number", callback)
 
 		self.__getObjects(connection, "categories", callback)
 		self.__getObjects(connection, "designs",    callback)
@@ -425,6 +427,10 @@ class Cache(object):
 			if isinstance(p, getattr(objects, sn.title())):
 				c(pn, "downloaded", amount=1, \
 					message="Got %s %s (id: %i) (last modified at %s)..." % (sn, p.name, p.id, p.modify_time))
+
+		if len(toget) < 1:
+			c(pn, "finished", message="No %s to get, skipping..." % pn)
+			return 0
 
 		# Download the XXX
 		c(pn, "todownload", \

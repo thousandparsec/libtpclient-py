@@ -6,7 +6,6 @@ import time
 import threading
 import traceback
 
-from tp.netlib import Connection, failed
 
 from cache import Cache
 from media import Media
@@ -128,10 +127,12 @@ class CallThread(threading.Thread):
 	
 	def run(self):
 		while not self.exit:
+			self.every()
+
 			if len(self.tocall) <= 0:
 				self.idle()
 				continue
-			
+	
 			method, args, kw = self.tocall.pop(0)
 			try:
 				method(*args, **kw)
@@ -144,6 +145,12 @@ class CallThread(threading.Thread):
 	def every(self):
 		"""\
 		Called every time th run goes around a loop.
+
+		It is called before functions are poped of the tocall list. This mean 
+		it could be used to reorganise the pending requests (or even remove
+		some).
+
+		By default it does nothing.
 		"""
 		pass
 
@@ -192,6 +199,8 @@ class NotImportantEvent(Exception):
 	"""
 	pass
 
+from tp.netlib import Connection, failed
+from tp.netlib import objects as tpobjects
 class NetworkThread(CallThread):
 	"""\
 	The network thread deals with talking to the server via the network.
@@ -216,6 +225,25 @@ class NetworkThread(CallThread):
 		"""
 		pass
 
+	class NetworkAsyncFrameEvent(Exception):
+		"""\
+		Raised when an async frame (such as TimeRemaining) is received.
+		"""
+		def __init__(self, frame):
+			self.frame = frame
+
+	class NetworkTimeRemainingEvent(NetworkAsyncFrameEvent):
+		"""\
+		Called when an async TimeRemaining frame is received. 
+		"""
+		def __init__(self, frame):
+			if not isinstance(frame, tpobjects.TimeRemaining):
+				raise SyntaxError("NetworkTimeRemainingEvent requires a TimeRemaining frame!? (got %r)", frame)
+			NetworkThread.NetworkAsyncFrameEvent.__init__(self, frame)
+
+			self.gotat      = time.time()
+			self.remaining  = frame.time	
+
 	######################################
 
 	def __init__(self, application):
@@ -223,7 +251,25 @@ class NetworkThread(CallThread):
 
 		self.application = application
 		self.connection = Connection()
-	
+
+	def every(self):
+		"""\
+		Check's if there are any async frames pending. If so creates the correct
+		events and posts them.
+		"""
+		try:
+			self.connection.pump()
+
+			if self.connection.buffered['frames-received'].has_key(0):
+				pending = self.connection.buffered['frames-received'][0]
+				while len(pending) > 0:
+					if not isinstance(pending[0], tpobjects.TimeRemaining):
+						break
+					frame = pending.pop(0)
+					self.application.Post(self.NetworkTimeRemainingEvent(frame))
+		except (AttributeError, KeyError), e:
+			print e
+
 	def error(self, error):
 		traceback.print_exc()
 		if isinstance(error, (IOError, socket.error)):
@@ -318,6 +364,7 @@ class NetworkThread(CallThread):
 
 	def CacheUpdate(self, callback):
 		try:
+			callback("connecting", "alreadydone", "Already connected to the server!")
 			self.application.cache.update(self.connection, callback)
 			self.application.cache.save()
 		except ThreadStop, e:
@@ -638,6 +685,7 @@ class FinderThread(CallThread):
 		return self.local.games, self.remote.games
 
 	def Cleanup(self):
+		print "Cleanup", self
 		self.local.exit()
 		self.remote.exit()
 

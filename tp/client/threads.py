@@ -112,6 +112,14 @@ class CallThreadStop(Exception):
 ThreadStop = CallThreadStop
 
 class CallThread(threading.Thread):
+	"""\
+	A call thread is thread which lets you queue up functions to be called
+	in the thread.
+
+	Functions are called in the order they are queue and there is no prempting
+	or other fancy stuff.
+	"""
+
 	def __init__(self):
 		threading.Thread.__init__(self)
 		self.exit = False
@@ -133,10 +141,28 @@ class CallThread(threading.Thread):
 			except Exception, e:
 				self.error(e)
 
+	def every(self):
+		"""\
+		Called every time th run goes around a loop.
+		"""
+		pass
+
 	def idle(self):
+		"""\
+		Called when there is nothing left to do. Will keep getting called until
+		there is something to be done.
+
+		The default sleeps for 100ms (should most probably sleep if you don't
+		want to consume 100% of the CPU).
+		"""
 		time.sleep(0.1)
 
 	def error(self, error):
+		"""\
+		Called when an exception occurs in a function which was called. 
+
+		The default just prints out the traceback to stderr.
+		"""
 		pass
 
 	def Reset(self):
@@ -144,19 +170,33 @@ class CallThread(threading.Thread):
 		self.reset = True
 
 	def Cleanup(self):
+		"""\
+		Ask the thread to try and exit.
+		"""
 		del self.tocall[:]
 		self.exit = True
 
 	def Call(self, method, *args, **kw):
 		"""\
-		Call a method in this thread.
+		Queue a call to method in on thread.
 		"""
 		self.tocall.append((method, args, kw))
 
 class NotImportantEvent(Exception):
+	"""\
+	Not Important events are things like download progress events. They occur 
+	often and if one is missed there is not huge problem.
+	
+	The latest NotImportantEvent is always the most up to date and if there are
+	pending updates only the latest in a group should be used.
+	"""
 	pass
 
 class NetworkThread(CallThread):
+	"""\
+	The network thread deals with talking to the server via the network.
+	"""
+
 	## These are network events
 	class NetworkFailureEvent(Exception):
 		"""\
@@ -356,6 +396,10 @@ class NetworkThread(CallThread):
 
 
 class MediaThread(CallThread):
+	"""\
+	The media thread deals with downloading media off the internet.
+	"""
+
 	## These are network events
 	class MediaFailureEvent(Exception):
 		"""\
@@ -498,6 +542,13 @@ class RemoteBrowser(RemoteBrowserB, threading.Thread):
 		RemoteBrowserB.__init__(self, *args, **kw)
 	
 class FinderThread(CallThread):
+	"""\
+	The finder thread deals with finding games.
+
+	It uses both Zeroconf and talks to the metaserver to get the information it
+	needs.
+	"""
+
 	## These are network events
 	class GameEvent(object):
 		def __init__(self, game):

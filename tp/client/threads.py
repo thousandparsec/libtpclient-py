@@ -6,7 +6,6 @@ import time
 import threading
 import traceback
 
-from tp.netlib import Connection, failed
 
 from cache import Cache
 from media import Media
@@ -35,7 +34,6 @@ class Application(object):
 			self.media = None
 
 		print self.gui, self.network, self.media
-
 		self.cache = None
 		
 		# Load the Configuration
@@ -101,15 +99,20 @@ class CallThread(threading.Thread):
 	
 	def run(self):
 		while not self.exit:
+			self.every()
+
 			if len(self.tocall) <= 0:
 				self.idle()
 				continue
-			
+
 			method, args, kw = self.tocall.pop(0)
 			try:
 				method(*args, **kw)
 			except Exception, e:
 				self.error(e)
+
+	def every(self):
+		pass
 
 	def idle(self):
 		time.sleep(0.1)
@@ -127,6 +130,8 @@ class CallThread(threading.Thread):
 		"""
 		self.tocall.append((method, args, kw))
 
+from tp.netlib import Connection, failed
+from tp.netlib import objects as tpobjects
 class NetworkThread(CallThread):
 	## These are network events
 	class NetworkFailureEvent(Exception):
@@ -147,6 +152,25 @@ class NetworkThread(CallThread):
 		"""
 		pass
 
+	class NetworkAsyncFrameEvent(Exception):
+		"""\
+		Raised when an async frame (such as TimeRemaining) is received.
+		"""
+		def __init__(self, frame):
+			self.frame = frame
+
+	class NetworkTimeRemainingEvent(NetworkAsyncFrameEvent):
+		"""\
+		Called when an async TimeRemaining frame is received. 
+		"""
+		def __init__(self, frame):
+			if not isinstance(frame, tpobjects.TimeRemaining):
+				raise SyntaxError("NetworkTimeRemainingEvent requires a TimeRemaining frame!? (got %r)", frame)
+			NetworkThread.NetworkAsyncFrameEvent.__init__(self, frame)
+
+			self.gotat      = time.time()
+			self.remaining  = frame.time	
+
 	######################################
 
 	def __init__(self, application):
@@ -154,8 +178,27 @@ class NetworkThread(CallThread):
 
 		self.application = application
 		self.connection = Connection()
-	
+
+	def every(self):
+		"""\
+		Check's if there are any async frames pending. If so creates the correct
+		events and posts them.
+		"""
+		try:
+			self.connection.pump()
+
+			if self.connection.buffered['frames-received'].has_key(0):
+				pending = self.connection.buffered['frames-received'][0]
+				while len(pending) > 0:
+					if not isinstance(pending[0], tpobjects.TimeRemaining):
+						break
+					frame = pending.pop(0)
+					self.application.Post(self.NetworkTimeRemainingEvent(frame))
+		except (AttributeError, KeyError), e:
+			print e
+
 	def error(self, error):
+		traceback.print_exc()
 		if isinstance(error, (IOError, socket.error)):
 			s  = _("There was an unknown network error.\n")
 			s += _("Any changes since last save have been lost.\n")
@@ -239,6 +282,7 @@ class NetworkThread(CallThread):
 			self.application.cache.update(self.connection, callback)
 			self.application.cache.save()
 		except Exception, e:
+			traceback.print_exc()
 			self.application.Post(self.NetworkFailureEvent(e))	
 			raise
 

@@ -18,7 +18,7 @@ from strptime import strptime
 """
 Format for media repositories are the following,
 
-media.gz
+media-new.gz
 directory1/mediafile.png
 directory1/mediafile.mesh
 
@@ -26,7 +26,7 @@ All media which is the same but in a different format must have the same
 basename. See the above example where the file "mediafile" is avaliable in 
 both png and mesh format.
 
-The media.gz is a compressed text file which describes all the media 
+The MEDIA is a compressed text file which describes all the media 
 avaliable on the server and some metadata about it.
 It has the following format
 <media file> <last modtime YYYYMMddThhmm> <filesize bytes> <checksumtype>-<checksum>
@@ -46,23 +46,23 @@ graphic is up to date. The meta file contains,
 20060614T0923 1789345 md5-318424ccbd97c644d6baa594284fefe3
 
 Media can also be distributed via packages. This should be installed in
-a shared location such as /usr/share/games/tp, the media.gz should be 
+a shared location such as /usr/share/games/tp, the MEDIA should be 
 distributed with the data where the data is split may have to be merged
 together (say if the 3d and 2d data from a URL is distributed seperately).
 
-/usr/share/games/tp/http---media.thousandparsec.net-80-client/media.gz
+/usr/share/games/tp/http---media.thousandparsec.net-80-client/MEDIA
 /usr/share/games/tp/http---media.thousandparsec.net-80-client/mediafile.png
 /usr/share/games/tp/http---media.thousandparsec.net-80-client/directory1/mediafile.png.meta
-/usr/share/games/tp/ftp---someotherplace.net-21-pub/media.gz
+/usr/share/games/tp/ftp---someotherplace.net-21-pub/media-new.gz
 ...
 
 When a new media is avaliable it will be downloaded to the local 
 users home directory.
 
-~/.tp/media/http---media.thousandparsec.net-80-client/media.gz
+~/.tp/media/http---media.thousandparsec.net-80-client/media-new.gz
 ~/.tp/media/http---media.thousandparsec.net-80-client/directory1/mediafile.png
 ~/.tp/media/http---media.thousandparsec.net-80-client/directory1/mediafile.png.meta
-~/.tp/media/ftp---someotherplace.net-21-pub/media.gz
+~/.tp/media/ftp---someotherplace.net-21-pub/media-new.gz
 
 If a media file is found in the distribution search locations that is the 
 same or newer then the users version. The users version should be removed.
@@ -89,6 +89,12 @@ def filesafe(url):
 
 def totime(s):
 	return "%02.0f%02.0f%02.0fT%02.0f%02.0f" % strptime(s, "%a, %d %b %Y %H:%M:%S %Z")[0:5]
+
+MEDIA="media-new.gz"
+
+class URLOpener(urllib.FancyURLopener):
+	def http_error_default(self, file, socket, code, reason, message):
+		raise IOError(code, reason)
 
 class Media:
 	def configdir():
@@ -159,9 +165,10 @@ class Media:
 		"""\
 		Gets the remote time of a file.
 
-		Needed to find out if we need to update media.gz
+		Needed to find out if we need to update media-new.gz
 		"""
-		self.connection.request("HEAD", self.url + file)
+		print "remotetime",
+		print repr(self.connection.request("HEAD", self.url + file))
 		
 		headers = {}
 		headers['last-modified'] = self.connection.getresponse().getheader('last-modified')
@@ -170,28 +177,31 @@ class Media:
 	def media(self):
 		"""\
 		"""
+		global MEDIA
+
 		# Use the cached version if it's avaliable
 		if hasattr(self, '_media'):
 			return self._media
 
-		file = self.newest("media.gz")
+		file = self.newest(MEDIA)
 		print "Media.gz for this url can be found at '%s'" % file
 		if file is None or not self.connection is None:
 			if not file is None:
 				modtime, size, checksum = self.metainfo(file)
 				# Check if there is a remote version which is new...
-				remotetime = self.remotetime("media.gz")
+				remotetime = self.remotetime(MEDIA)
 				print "Localtime: %s Remotetime: %s" % (modtime, remotetime)
 				if remotetime > modtime:
 					# Need to get a new version
-					file = self.get("media.gz")
+					file = self.get(MEDIA)
 			else:
-				print "Need to get initial media.gz"
+				print "Need to get initial media-new.gz"
 				# Need to get a version
-				file = self.get("media.gz")
+				file = self.get(MEDIA)
 
 		media = {}
 		for line in gzip.open(file).readlines():
+			print line
 			file, timestamp, size, checksum = line.strip().split()
 
 			media[file] = (timestamp, int(size), checksum)
@@ -237,10 +247,12 @@ class Media:
 		# Looks like we will have to download a peice of media
 		return self.get(media)
 
-	def get(self, file):
+	def get(self, file, callback=None):
 		"""\
 		Gets a file from the remote server.
 		"""
+		global MEDIA
+
 		# Where the file will be downloaded too
 		local_location  = os.path.join(self.locations[-1], file)
 		# Where the file is on the remote server
@@ -259,9 +271,9 @@ class Media:
 		if 1:		
 #		try:
 			# Download the file
-			(trash, message) = self.getter.retrieve(remote_location, local_location) #, callback)
+			(trash, message) = self.getter.retrieve(remote_location, local_location, callback)
 
-			if file != "media.gz":
+			if file != MEDIA:
 				mediagz = self.media()
 				# Check the checksum
 
@@ -326,7 +338,7 @@ class Media:
 
 	def getter(self):
 		if not hasattr(self, '_getter'):
-			self._getter = urllib.FancyURLopener()
+			self._getter = URLOpener()
 		return self._getter
 	getter = property(getter)
 

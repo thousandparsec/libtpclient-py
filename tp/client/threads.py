@@ -132,7 +132,7 @@ class CallThread(threading.Thread):
 			if len(self.tocall) <= 0:
 				self.idle()
 				continue
-	
+
 			method, args, kw = self.tocall.pop(0)
 			try:
 				method(*args, **kw)
@@ -525,7 +525,7 @@ class MediaThread(CallThread):
 				raise self.MediaDownloadAbortEvent(file)
 
 		try:
-			localfile = self.cache.getfile(file, timestamp, callback=callback)
+			localfile = self.cache.get(file, callback=callback)
 			print "Media Downloading Finished", file
 			self.application.Post(self.MediaDownloadDoneEvent(file, localfile=localfile))
 		except self.MediaDownloadAbortEvent, e:
@@ -556,23 +556,23 @@ class MediaThread(CallThread):
 	def StopFile(self, file):
 		self.tostop.append(file)
 
-	def GetFile(self, file, timestamp):
+	def GetFile(self, file):
 		"""\
 		Get a File, return directly or start a download.
 		"""
-		print "GetFile", file, timestamp
-		if self.cache.ready(file, timestamp):
-			print "File has already been downloaded.", file
-			return self.cache.getfile(file, timestamp)
-		self.todownload[file] = timestamp
+		print "GetFile", file
+		location = self.cache.newest(file)
+		if location:
+			print "File has already been downloaded.", location
+			return location
+		self.todownload[file] = None
 
 	def ConnectTo(self, host, username, debug=False):
 		"""\
 		ConnectTo 
 		"""
 		print "Media ConnectTo", host, username
-		self.cache = Media(Cache.key(host, username), "http://darcs.thousandparsec.net/repos/media/client/")
-		self.cache.getfile(self.cache.files)
+		self.cache = Media("http://svn.thousandparsec.net/svn/media/client/")
 		files = self.cache.getpossible(['png', 'gif'])
 		self.application.Post(self.MediaUpdateEvent(files))
 

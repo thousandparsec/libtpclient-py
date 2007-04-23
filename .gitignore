@@ -1,0 +1,8 @@
+*~
+*.py[co]
+build
+dist
+MANIFEST
+libtpclient_py.egg-info
+build-stamp
+html

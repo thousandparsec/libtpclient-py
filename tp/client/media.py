@@ -62,18 +62,39 @@ class Media:
 		return self._getter
 	getter = property(getter)
 
+	def getresponse(self, media_remote):
+		"""
+		"""
+		try:
+			print "Trying to get data on ", media_remote
+			while True:
+				self.connection.request("HEAD", media_remote)
+				response = self.connection.getresponse()
+				self.connection.close()
+				if response.status == 301 or response.status == 302:
+					media_remote = response.getheader('location')
+					print 'Redirected to', media_remote
+					self.connection.connect()
+				else:
+					return response
+		except socket.error, e:
+			print e
+			return None
+
 	def updated(self, media_remote, media_local):
 		"""\
 		Checks the file's timestamp against the remote's version.
 		"""
 		try:
-			self.connection.request("HEAD", media_remote)
+			response = self.getresponse(media_remote)
+			if response == None:
+				return False
+			if response.status == 404:
+				print 'File not found on server (404)'
+				return False
 			
 			headers = {}
-			headers['last-modified'] = self.connection.getresponse().getheader('last-modified')
-#			for key, value in self.connection.getresponse().getheaders():
-#				headers[key] = value
-
+			headers['last-modified'] = response.getheader('last-modified')
 			remotedate = strptime(headers['last-modified'], "%a, %d %b %Y %H:%M:%S %Z")[0:5]
 			localdate = eval(open(media_local + ".timestamp").read())
 
@@ -124,6 +145,11 @@ class Media:
 
 		if self.noconnect:
 			raise IOError("Could not get the file as in no connection mode!")	
+
+		response = self.getresponse(media_remote)
+		if response == None or response.status == 404:
+			print "No media on remote server"
+			return media_local
 	
 		ldir = os.path.dirname(media_local)
 		if not os.path.exists(ldir):
@@ -153,10 +179,16 @@ class Media:
 				for type in valid_types:
 					if line.endswith(type):
 						yield line, timestamp
+		raise IOError("media.gz is not avaliable at this time")
 
 if __name__ == "__main__":
+	"""
+	media.py <url>
+	"""
+
 	import sys
-	media_cache = Media(sys.argv[1], sys.argv[2])
+	media_cache = Media("testing", sys.argv[1])
+	media_cache.getfile(media_cache.files)
 
 	files = {}
 	for file, timestamp in media_cache.getpossible(['png', 'gif', 'jpg']):

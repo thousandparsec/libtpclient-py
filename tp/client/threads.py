@@ -474,9 +474,14 @@ class MediaThread(CallThread):
 		"""\
 		ConnectTo 
 		"""
+		def getpossible_wrapper():
+			try:
+				for a in self.cache.getpossible(['png', 'gif']):
+					yield a
+			except IOError, e:
+				print e
 		print "Media ConnectTo", host, username
 		self.cache = Media(Cache.key(host, username), "http://darcs.thousandparsec.net/repos/media/client/")
 		self.cache.getfile(self.cache.files)
-		files = self.cache.getpossible(['png', 'gif'])
+		files = getpossible_wrapper()
 		self.application.Post(self.MediaUpdateEvent(files))
-

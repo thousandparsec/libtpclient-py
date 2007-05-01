@@ -187,13 +187,12 @@ class NetworkThread(CallThread):
 		try:
 			self.connection.pump()
 
-			if self.connection.buffered['frames-received'].has_key(0):
-				pending = self.connection.buffered['frames-received'][0]
-				while len(pending) > 0:
-					if not isinstance(pending[0], tpobjects.TimeRemaining):
-						break
-					frame = pending.pop(0)
-					self.application.Post(self.NetworkTimeRemainingEvent(frame))
+			pending = self.connection.buffered['frames-async']
+			while len(pending) > 0:
+				if not isinstance(pending[0], tpobjects.TimeRemaining):
+					break
+				frame = pending.pop(0)
+				self.application.Post(self.NetworkTimeRemainingEvent(frame))
 		except (AttributeError, KeyError), e:
 			print e
 

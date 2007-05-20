@@ -15,7 +15,6 @@ build: $(PYVERS:%=build-python%)
 
 build-python%:
 	dh_testdir
-	mv setup.cfg setup.cfg.outofway
 	python$* setup.py build
 	touch $@
 
@@ -25,7 +24,6 @@ clean:
 	rm -f build-python*
 	rm -rf build
 	-find . -name '*.py[co]' | xargs rm -f
-	test -r setup.cfg.outofway && mv setup.cfg.outofway setup.cfg || true
 	dh_clean
 
 install: build $(PYVERS:%=install-python%)

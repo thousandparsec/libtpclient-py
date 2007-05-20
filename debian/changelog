@@ -1,8 +1,10 @@
 libtpclient-py (0.2.2-0) unstable; urgency=low
 
   * New upstream version
+  * Build-Depends-Indep on python-all, to build against all supported python
+    versions
 
- -- Paul Hampson <Paul.Hampson@Pobox.com>  Sun, 20 May 2007 16:01:38 +1000
+ -- Paul Hampson <Paul.Hampson@Pobox.com>  Sun, 20 May 2007 16:23:44 +1000
 
 libtpclient-py (0.2.1-1) unstable; urgency=low
 

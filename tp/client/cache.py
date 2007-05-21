@@ -238,10 +238,10 @@ class Cache(object):
 					raise IOError("Garbage was found at the end!")
 				break
 
-			p = Header(d)
+			p = Header.fromstr(d)
 
 			d = f.read(p.length)
-			p.process(d)
+			p.__process__(d)
 
 			# Descriptions
 			if isinstance(p, Description):
@@ -259,7 +259,7 @@ class Cache(object):
 			if not self.orders.has_key(id):
 				self.orders[id] = (self.objects.times[id], [])
 
-		#pprint.pprint(self.__dict__)
+		pprint.pprint(self.__dict__)
 
 	def save(self):
 		"""\

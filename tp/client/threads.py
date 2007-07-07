@@ -27,6 +27,15 @@ class Application(object):
 	FinderClass = None
 
 	def __init__(self):
+		try:
+			import signal
+
+			# Make sure these signals go to me, rather then a child thread..
+			signal.signal(signal.SIGINT,  self.Exit)
+			signal.signal(signal.SIGTERM, self.Exit)
+		except ImportError:
+			pass
+
 		print self.GUIClass, self.NetworkClass, self.MediaClass, self.FinderClass
 		self.gui = self.GUIClass(self)
 		self.network = self.NetworkClass(self)
@@ -38,6 +47,7 @@ class Application(object):
 			self.finder = self.FinderClass(self)
 		else:
 			self.finder = None
+
 
 		print self.gui, self.network, self.media, self.finder
 		self.cache = None
@@ -93,7 +103,7 @@ class Application(object):
 		self.media.Call(self.media.Post, event)
 		self.gui.Call(self.gui.Post, event)
 
-	def Exit(self):
+	def Exit(self, *args, **kw):
 		"""
 		Exit the program.
 		"""
@@ -455,10 +465,11 @@ class MediaThread(CallThread):
 		pass
 
 	class MediaDownload:
-		def __init__(self, file, progress=0, size=0, localfile=None):
-			self.file = file
-			self.progress = progress
-			self.size = size
+		def __init__(self, file, progress=0, size=0, localfile=None, amount=0):
+			self.file      = file
+			self.amount    = amount
+			self.progress  = progress
+			self.size      = size
 			self.localfile = localfile
 
 		def __str__(self):
@@ -518,7 +529,7 @@ class MediaThread(CallThread):
 			if blocknum == 0:
 				self.application.Post(self.MediaDownloadStartEvent(file, progress, size))
 	
-			self.application.Post(self.MediaDownloadProgressEvent(file, progress, size))
+			self.application.Post(self.MediaDownloadProgressEvent(file, progress, size, amount=blocksize))
 	
 			if file in tostop:
 				tostop.remove(file)

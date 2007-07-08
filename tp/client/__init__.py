@@ -1,3 +1,4 @@
 
-from version import version
-__version__ = version
+from version import version, installpath
+__version__     = version
+__installpath__ = installpath

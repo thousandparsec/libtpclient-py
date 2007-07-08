@@ -4,7 +4,7 @@ import pkg_resources
 pkg_resources.require('libtpclient-py')
 
 from tp.client import version
-version = "%s.%s.%s" % version
+version = "%s.%s.%s" % version[0:3]
 
 from setuptools import setup
 

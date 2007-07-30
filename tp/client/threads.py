@@ -240,7 +240,7 @@ class NetworkThread(CallThread):
 			return False
 			
 		callback("Looking for Thousand Parsec Server...")
-		if failed(self.connection.connect(("libtpclient-py/%s.%s.%s " % version)+cs)):
+		if failed(self.connection.connect(("libtpclient-py/%s.%s.%s " % version[:3])+cs)):
 			s  = _("The client connected to the host but it did not appear to be a Thousand Parsec server.\n")
 			s += _("This could be because the server is down or the connection details are incorrect.\n")
 			self.application.Post(self.NetworkFailureEvent(s))

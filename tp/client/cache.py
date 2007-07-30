@@ -32,6 +32,10 @@ class Cache(object):
 	This is the a cache of the data downloaded from the network. 
 
 	It can be pickled and restored at a later date to preserve the data accross application runs.
+
+	To update the cache you use CacheDirtyEvents in the following way...
+		
+
 	"""
 	version = 3
 
@@ -209,10 +213,19 @@ class Cache(object):
 				else:
 					d.insert(evt.slot, evt.change)
 
+				if evt.what is "orders":
+					self.objects[evt.id].order_number += 1
+
 			elif evt.action == "change":
 				d[evt.slot] = evt.change
 			elif evt.action == "remove":
-				del d[evt.slot]
+				if not isinstance(evt.slot, (list, tuple)):
+					evt.slot = [evt.slot]
+				for slot in evt.slot:
+					del d[slot]
+
+					if evt.what is "orders":
+						self.objects[evt.id].order_number -= 1
 
 		evt.__class__ = self.CacheUpdateEvent
 
@@ -259,7 +272,7 @@ class Cache(object):
 			if not self.orders.has_key(id):
 				self.orders[id] = (self.objects.times[id], [])
 
-		pprint.pprint(self.__dict__)
+		#pprint.pprint(self.__dict__)
 
 	def save(self):
 		"""\
@@ -381,7 +394,7 @@ class Cache(object):
 				result = connection.poll()
 
 			id = toget.pop(0)
-			print id, repr(result)
+			#print id, repr(result)
 
 			if failed(result):
 				continue
@@ -395,7 +408,7 @@ class Cache(object):
 			having = set(self.objects.keys())
 
 			difference = having.difference(gotten)
-			print "diff", difference
+			#print "diff", difference
 			for id in difference:
 				del self.objects[id]
 				if self.orders.has_key(id):
@@ -466,7 +479,7 @@ class Cache(object):
 				result = connection.poll()
 
 			id = toget.pop(0)
-			print id, repr(result)
+			#print id, repr(result)
 
 			if failed(result):
 				continue

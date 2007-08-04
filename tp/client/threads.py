@@ -323,10 +323,10 @@ class NetworkThread(CallThread):
 			s += _("This could be because the server is down or you mistyped the server address.\n")
 			self.application.Post(self.NetworkFailureEvent(s))
 			return False
-		callback("connecting", "downloaded", "Successfully connected to the host...", amount=1)
+		callback("connecting", "downloaded", _("Successfully connected to the host..."), amount=1)
 			
 		try:
-			callback("connecting", "progress", "Looking for Thousand Parsec Server...")
+			callback("connecting", "progress", _("Looking for Thousand Parsec Server..."))
 			if failed(self.connection.connect(("libtpclient-py/%s.%s.%s " % version[:3])+cs)):
 				raise socket.error("")
 		except (IOError, socket.error), e:
@@ -334,16 +334,16 @@ class NetworkThread(CallThread):
 			s += _("This could be because the server is down or the connection details are incorrect.\n")
 			self.application.Post(self.NetworkFailureEvent(s))
 			return False
-		callback("connecting", "downloaded", "Found a Thousand Parsec Server...", amount=1)
+		callback("connecting", "downloaded", _("Found a Thousand Parsec Server..."), amount=1)
 
-		callback("connecting", "progress", "Looking for supported features...")
+		callback("connecting", "progress", _("Looking for supported features..."))
 		features = self.connection.features()
 		if failed(features):
 			s  = _("The client connected to the host but it did not appear to be a Thousand Parsec server.\n")
 			s += _("This could be because the server is down or the connection details are incorrect.\n")
 			self.application.Post(self.NetworkFailureEvent(s))
 			return False
-		callback("connecting", "downloaded", "Got the supported features...", amount=1)
+		callback("connecting", "downloaded", _("Got the supported features..."), amount=1)
 
 		self.application.Post(self.NetworkConnectEvent(features))
 		return 
@@ -352,19 +352,19 @@ class NetworkThread(CallThread):
 		"""\
 		Connect to a given host using a certain username and password.
 		"""
-		callback("connecting", "start", "Connecting...")
+		callback("connecting", "start", _("Connecting..."))
 		callback("connecting", "todownload", todownload=5)
 		try:
 			if self.Connect(host, debug, callback, cs) is False:
 				return False
 			
-			callback("connecting", "progress", "Trying to Login to the server...")
+			callback("connecting", "progress", _("Trying to Login to the server..."))
 			if failed(self.connection.login(username, password)):
 				s  = _("The client connected to the host but could not login because the username of password was incorrect.\n")
 				s += _("This could be because you are connecting to the wrong server or mistyped the username or password.\n")
 				self.application.Post(self.NetworkFailureEvent(s))
 				return False
-			callback("connecting", "downloaded", "Logged in okay!", amount=1)
+			callback("connecting", "downloaded", _("Logged in okay!"), amount=1)
 
 			# Create a new cache
 			self.application.cache = Cache(Cache.key(host, username))

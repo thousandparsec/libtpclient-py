@@ -341,12 +341,12 @@ class Cache(object):
 		#	FIXME: Should check that none of the Order definitions have changed
 
 		# Get the features this server support
-#		c("connecting", "todownload", message="Looking for supported features...")
+#		c("connecting", "todownload", message=_("Looking for supported features..."))
 		self.features = connection.features()
 #		c("connecting", "finished")
 
-		c("orderdescs", "start", message="Getting order descriptions...")
-		c("orderdescs", "progess", message="Working out the number of order descriptions to get..")
+		c("orderdescs", "start", message=_("Getting order descriptions..."))
+		c("orderdescs", "progess", message=_("Working out the number of order descriptions to get.."))
 		ids = []
 		for id, time in connection.get_orderdesc_ids(iter=True):
 			if OrderDescs().has_key(id) and hasattr(OrderDescs()[id], "modify_time"):
@@ -360,12 +360,12 @@ class Cache(object):
 			# Did we download the order description okay?
 			if not failed(desc):
 				c("orderdescs", "downloaded", amount=1, \
-					message="Got order description %s (ID: %i) (last modified at %s)..." % (desc._name, id, time))
+					message=_("Got order description %s (ID: %i) (last modified at %s)...") % (desc._name, id, time))
 				desc.register()
 			else:
 				c("orderdescs", "failure",
-					message="Failed to get order description with id, %i (last modified at %s)..." % (id, time))
-		c("orderdescs", "finished", message="Finished getting order descriptions...")
+					message=_("Failed to get order description with id, %i (last modified at %s)...") % (id, time))
+		c("orderdescs", "finished", message=_("Finished getting order descriptions..."))
 
 		# Get all the objects
 		#############################################################################
@@ -384,9 +384,9 @@ class Cache(object):
 		#self.__getObjects(connection, "players",    callback)
 		self.__getObjects(connection, "resources",  callback)
 
-		c("players", "start", message="Getting your player object...")
+		c("players", "start", message=_("Getting your player object..."))
 		self.players[0] = connection.get_players(0)[0]
-		c("players", "finished", message="Gotten your player object...")
+		c("players", "finished", message=_("Gotten your player object..."))
 
 	def __getObjects(self, connection, plural_name, callback):
 		"""\
@@ -408,10 +408,10 @@ class Cache(object):
 			else:
 				return getattr(self, pn)[id]
 
-		c(pn, "start", message="Getting %s..." % pn)
+		c(pn, "start", message=_("Getting %s...") % pn)
 
 		# Figure out the IDs to download
-		c(pn, "progess", message="Working out the number of %s to get.." % pn)
+		c(pn, "progess", message=_("Working out the number of %s to get..") % pn)
 		toget = []
 		ids = []
 		for id, time in getattr(connection, "get_%s_ids" % sn)(iter=True):
@@ -426,15 +426,15 @@ class Cache(object):
 		def OnPacket(p, c=c, pn=pn, sn=sn, objects=objects):
 			if isinstance(p, getattr(objects, sn.title())):
 				c(pn, "downloaded", amount=1, \
-					message="Got %s %s (id: %i) (last modified at %s)..." % (sn, p.name, p.id, p.modify_time))
+					message=_("Got %s %s (id: %i) (last modified at %s)...") % (sn, p.name, p.id, p.modify_time))
 
 		if len(toget) < 1:
-			c(pn, "finished", message="No %s to get, skipping..." % pn)
+			c(pn, "finished", message=_("No %s to get, skipping...") % pn)
 			return 0
 
 		# Download the XXX
 		c(pn, "todownload", \
-			message="Have %i %s to get..." % (len(toget), pn), todownload=len(toget))
+			message=_("Have %i %s to get...") % (len(toget), pn), todownload=len(toget))
 		frames = getattr(connection, "get_%s" % pn)(ids=toget, callback=OnPacket)
 
 		if failed(frames):
@@ -445,25 +445,25 @@ class Cache(object):
 				cache()[id] = (frame.modify_time, frame)
 			elif cache().has_key(id):
 				c(pn, "failure", \
-					message="Failed to get the %s which was previously called %s." % (sn, cache(id).name))
+					message=_("Failed to get the %s which was previously called %s.") % (sn, cache(id).name))
 				del cache()[id]
 			else:
 				c(pn, "failure", \
-					message="Failed to get the %s with id %s." % (sn, id))
+					message=_("Failed to get the %s with id %s.") % (sn, id))
 
-		c(pn, "progress", message="Cleaning up %s which have disappeared..." % pn)
+		c(pn, "progress", message=_("Cleaning up %s which have disappeared...") % pn)
 		# Check for XXX which no longer exist..
 		gotten = set(ids)
 		having = set(cache().keys())
 		difference = having.difference(gotten)
 		for id in difference:
 			c(pn, "progress", \
-				message="Removing %s %s as it has disappeared..." % (sn, cache(id).name))
+				message=_("Removing %s %s as it has disappeared...") % (sn, cache(id).name))
 			del cache()[id]
 
 		if pn == "objects":
 			c(pn, "progress", \
-				message="Building two way tree of the universe for speed...")
+				message=_("Building two way tree of the universe for speed..."))
 			def build(frame, parent=None, self=self):
 				if parent:
 					frame.parent = parent.id
@@ -472,7 +472,7 @@ class Cache(object):
 					build(cache(id), frame)
 			build(cache(0))
 
-		c(pn, "finished", message="Gotten all %s..." % pn)
+		c(pn, "finished", message=_("Gotten all %s...") % pn)
 
 		return toget
 
@@ -490,8 +490,8 @@ class Cache(object):
 		c = callback
 		sb = subname
 
-		c(sb, "start", message="Getting %s.." % sb)
-		c(sb, "todownload", message="Have to get %s for %i %s.." % (sb, len(toget), pn), todownload=len(toget))
+		c(sb, "start", message=_("Getting %s..") % sb)
+		c(sb, "todownload", message=_("Have to get %s for %i %s..") % (sb, len(toget), pn), todownload=len(toget))
 
 		# Set the blocking so we can pipeline the requests
 		connection.setblocking(True)
@@ -501,11 +501,11 @@ class Cache(object):
 
 			if getattr(frame, number) > 0:
 				c(sb, "progress", \
-					message="Sending a request for all %s on %s.." % (sb, str(frame.name)))
+					message=_("Sending a request for all %s on %s..") % (sb, str(frame.name)))
 				getattr(connection, "get_%s" % sb)(id, range(0, getattr(frame, number)))
 			else:
 				c(sb, "progress", \
-					message="Skipping requesting %s on %s as there are none!" % (sb, str(frame.name)))
+					message=_("Skipping requesting %s on %s as there are none!") % (sb, str(frame.name)))
 				empty.append(id)
 
 		for id in empty:
@@ -523,19 +523,19 @@ class Cache(object):
 
 			if failed(result):
 				c(sb, "failure", \
-					message="Failed to get %s for %s (id: %s) (%s)..." % (sb, str(frame.name), frame.id, result[1]))
+					message=_("Failed to get %s for %s (id: %s) (%s)...") % (sb, str(frame.name), frame.id, result[1]))
 				result = []
 			else:
 				c(sb, "downloaded", amount=1, \
-					message="Got %i %s for %s (id: %s)..." % (len(result), sb, str(frame.name), frame.id))
+					message=_("Got %i %s for %s (id: %s)...") % (len(result), sb, str(frame.name), frame.id))
 			getattr(self, sb)[id] = (cache(id).modify_time, result)
 
-		c(sb, "progress", message="Cleaning up any stray %s.." % sb)
+		c(sb, "progress", message=_("Cleaning up any stray %s..") % sb)
 		for id in getattr(self, sb).keys():
 			if not cache().has_key(id):
-				c(sb, "progress", message="Found stray %s for %s.." % (sb, id))
+				c(sb, "progress", message=_("Found stray %s for %s..") % (sb, id))
 				del getattr(self, sb)[id]
 
 		connection.setblocking(False)
-		c(sb, "finished", message="Gotten all the %s.." % sb)
+		c(sb, "finished", message=_("Gotten all the %s..") % sb)
 

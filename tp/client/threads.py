@@ -48,8 +48,6 @@ class Application(object):
 		else:
 			self.finder = None
 
-
-		print self.gui, self.network, self.media, self.finder
 		self.cache = None
 		
 		# Load the Configuration
@@ -59,21 +57,13 @@ class Application(object):
 		"""\
 		Set the application running.
 		"""
-		print "Application.Run"
-		print self.gui, self.network, self.media, self.finder
 		self.network.start()
 
 		if not self.finder is None:
-			print "Finder start..."
 			self.finder.start()
-		else:
-			print "Finder not starting..."
 
 		if not self.media is None:
-			print "Media Start..."
 			self.media.start()
-		else:
-			print "Not Media Start..."
 
 		self.gui.start()
 
@@ -523,7 +513,6 @@ class MediaThread(CallThread):
 			return
 
 		file, timestamp = self.todownload.iteritems().next()
-		print "Media.Downloading Starting", file, timestamp
 		def callback(blocknum, blocksize, size, self=self, file=file, tostop=self.tostop):
 			progress = min(blocknum*blocksize, size)
 			if blocknum == 0:
@@ -537,10 +526,8 @@ class MediaThread(CallThread):
 
 		try:
 			localfile = self.cache.get(file, callback=callback)
-			print "Media Downloading Finished", file
 			self.application.Post(self.MediaDownloadDoneEvent(file, localfile=localfile))
 		except self.MediaDownloadAbortEvent, e:
-			print "Media Downloading Aborting", e
 			self.application.Post(e)
 
 		del self.todownload[file]
@@ -553,7 +540,6 @@ class MediaThread(CallThread):
 		raise
 
 	def Cleanup(self):
-		print "Cleanup", self, self.todownload
 		for file in self.todownload:
 			self.tostop.append(file)
 		CallThread.Cleanup(self)
@@ -571,10 +557,8 @@ class MediaThread(CallThread):
 		"""\
 		Get a File, return directly or start a download.
 		"""
-		print "GetFile", file
 		location = self.cache.newest(file)
 		if location:
-			print "File has already been downloaded.", location
 			return location
 		self.todownload[file] = None
 
@@ -582,7 +566,6 @@ class MediaThread(CallThread):
 		"""\
 		ConnectTo 
 		"""
-		print "Media ConnectTo", host, username
 		self.cache = Media("http://svn.thousandparsec.net/svn/media/client/")
 		files = self.cache.getpossible(['png', 'gif'])
 		self.application.Post(self.MediaUpdateEvent(files))
@@ -674,19 +657,15 @@ class FinderThread(CallThread):
 		self.remote.GameGone  = self.LostRemoteGame
 
 	def FoundLocalGame(self, game):
-		print "FoundLocalGame", self, game
 		self.application.Post(FinderThread.FoundLocalGameEvent(game))
 
 	def FoundRemoteGame(self, game):
-		print "FoundRemoteGame", self, game
 		self.application.Post(FinderThread.FoundRemoteGameEvent(game))
 
 	def LostLocalGame(self, game):
-		print "LostLocalGame", self, game
 		self.application.Post(FinderThread.LostLocalGameEvent(game))
 
 	def LostRemoteGame(self, game):
-		print "LostRemoteGame", self, game
 		self.application.Post(FinderThread.LostRemoteGameEvent(game))
 
 	def Games(self):
@@ -696,7 +675,6 @@ class FinderThread(CallThread):
 		return self.local.games, self.remote.games
 
 	def Cleanup(self):
-		print "Cleanup", self
 		self.local.exit()
 		self.remote.exit()
 

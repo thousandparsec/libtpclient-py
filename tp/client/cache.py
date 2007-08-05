@@ -156,7 +156,6 @@ class Cache(object):
 		key = Cache.configkey(key)
 
 		self.file = os.path.join(configdir, "cache.%s" % (key,))
-		print "Cache file", self.file
 		if os.path.exists(self.file) and not new:
 			# Load the previously cached status
 			print "Loading previous saved data (from %s)." % (self.file,)

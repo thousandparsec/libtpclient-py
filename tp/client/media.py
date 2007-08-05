@@ -139,7 +139,6 @@ class Media:
 		foundhere = []
 		for location in self.locations:
 			possible = os.path.join(location, file)
-			print "Locate?", possible
 			if os.path.exists(possible):
 				foundhere.append(possible)
 		return foundhere
@@ -151,7 +150,6 @@ class Media:
 		location = None
 		curtime = 0
 		for possible in self.locate(file):
-			print "Newest?", possible
 			try:
 				modtime, size, checksum = self.metainfo(possible)
 				if modtime > curtime:
@@ -167,9 +165,8 @@ class Media:
 
 		Needed to find out if we need to update media-new.gz
 		"""
-		print "remotetime",
-		print repr(self.connection.request("HEAD", self.url + file))
-		
+		self.connection.request("HEAD", self.url + file)
+
 		headers = {}
 		headers['last-modified'] = self.connection.getresponse().getheader('last-modified')
 		return totime(headers['last-modified'])
@@ -184,24 +181,20 @@ class Media:
 			return self._media
 
 		file = self.newest(MEDIA)
-		print "Media.gz for this url can be found at '%s'" % file
 		if file is None or not self.connection is None:
 			if not file is None:
 				modtime, size, checksum = self.metainfo(file)
 				# Check if there is a remote version which is new...
 				remotetime = self.remotetime(MEDIA)
-				print "Localtime: %s Remotetime: %s" % (modtime, remotetime)
 				if remotetime > modtime:
 					# Need to get a new version
 					file = self.get(MEDIA)
 			else:
-				print "Need to get initial media-new.gz"
 				# Need to get a version
 				file = self.get(MEDIA)
 
 		media = {}
 		for line in gzip.open(file).readlines():
-			print line
 			file, timestamp, size, checksum = line.strip().split()
 
 			media[file] = (timestamp, int(size), checksum)
@@ -258,8 +251,6 @@ class Media:
 		# Where the file is on the remote server
 		remote_location = urlparse.urljoin(self.url, file)
 
-		print "Downloading from %s to %s" % (remote_location, local_location)
-
 		# If the file already exists we better remove it
 		if os.path.exists(local_location):
 			os.unlink(local_location)
@@ -283,7 +274,6 @@ class Media:
 				open(local_location+".meta", 'w').write("%s %s %s" % mediagz[file])
 			else:
 				# Have to generate our own data
-				print message
 				open(local_location + ".meta", 'w').write("%s %s %s" % (totime(message.getheader('last-modified')), 0, 'None'))
 			return local_location
 #		except IOError, e:
@@ -302,13 +292,11 @@ class Media:
 		self.url = url
 		# Make the URL safe for filesystems
 		safeurl = filesafe(url)
-		print "Filesystem safe url is '%s'" % safeurl
 
 		# FIXME: Check the serverurl is valid, IE It's in the full form.
 		if configdir == None:
 			configdir = self.configdir()
 		userdir = os.path.join(configdir, "media", safeurl)
-		print "User directory is:", userdir
 
 #		# Make sure the user dir exists
 #		if os.path.exists(userdir) and new:
@@ -326,7 +314,6 @@ class Media:
 
 		# Append the users "localdir"
 		self.locations.append(userdir)
-		print "Locations to find media", self.locations
 
 
 	def connection(self):

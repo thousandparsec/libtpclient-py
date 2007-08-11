@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 import pkg_resources
-pkg_resources.require('libtpclient-py')
+pkg_resources.require('libtpproto-py')
 
-from tp.client import version
-version = "%s.%s.%s" % version[0:3]
+from tp.client import __version__
+version = "%s.%s.%s" % __version__[0:3]
 
 from setuptools import setup
 

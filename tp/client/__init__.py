@@ -1,7 +1,8 @@
 
-from version import version, installpath
-__version__     = version
-__installpath__ = installpath
+from version import version as vi
+from version import installpath as ip
+__version__     = vi
+__installpath__ = ip
 
 import __builtin__
 try:

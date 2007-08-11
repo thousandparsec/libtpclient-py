@@ -1,3 +1,10 @@
+libtpclient-py (0.2.99+0.3.0.20070811-1auto1) unstable; urgency=low
+
+  * Daily build
+  * Git version: e3c4279c5ec5a7b40bc61b59e4f74fd54a0643f8
+
+ -- Paul Schulz <paul@mawsonlakes.org>  Sat, 11 Aug 2007 17:23:26 +0930
+
 libtpclient-py (0.2.2-0) unstable; urgency=low
 
   * New upstream version

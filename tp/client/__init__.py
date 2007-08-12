@@ -6,7 +6,6 @@ __installpath__ = ip
 
 import __builtin__
 try:
-	print __builtin__
 	__builtin__._
 except AttributeError:
 	def _(s):

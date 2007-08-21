@@ -15,7 +15,7 @@ build: $(PYVERS:%=build-python%)
 
 build-python%:
 	dh_testdir
-	python$* setup.py build
+	python$* setup.py --ignore-deps build
 	touch $@
 
 clean:
@@ -34,7 +34,7 @@ install-python%:
 	dh_clean -k 
 	dh_installdirs
 	python$* setup.py install --root=$(CURDIR)/debian/python-tp-client \
-		--single-version-externally-managed
+		--single-version-externally-managed --ignore-deps
 
 # Build architecture-independent files here.
 binary-indep: build install

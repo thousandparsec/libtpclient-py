@@ -1,7 +1,13 @@
 #!/usr/bin/env python
 
-import pkg_resources
-pkg_resources.require('libtpproto-py')
+import sys
+
+try:
+	del sys.argv[sys.argv.index('--ignore-deps')]
+	print "Ignoring dependencies..."
+except ValueError:
+	import pkg_resources
+	pkg_resources.require('libtpproto-py')
 
 from tp.client import __version__
 version = "%s.%s.%s" % __version__[0:3]

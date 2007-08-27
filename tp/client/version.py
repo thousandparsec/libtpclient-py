@@ -31,7 +31,7 @@ version_str = "%i.%i.%i" % version[:3]
 
 if __name__ == "__main__":
 	import sys
-	if sys.argv[1] == '--fix':
+	if len(sys.argv) > 1 and sys.argv[1] == '--fix':
 		print """
 import os, os.path
 __path__ = os.path.realpath(os.path.dirname(__file__))

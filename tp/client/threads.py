@@ -59,11 +59,11 @@ class Application(object):
 		"""
 		self.network.start()
 
-		if not self.finder is None:
-			self.finder.start()
-
 		if not self.media is None:
 			self.media.start()
+
+		if not self.finder is None:
+			self.finder.start()
 
 		self.gui.start()
 
@@ -118,9 +118,8 @@ class CallThread(threading.Thread):
 	Functions are called in the order they are queue and there is no prempting
 	or other fancy stuff.
 	"""
-
 	def __init__(self):
-		threading.Thread.__init__(self)
+		threading.Thread.__init__(self, name=self.name)
 		self.exit = False
 		self.reset = False
 		self.tocall = []
@@ -205,6 +204,7 @@ class NetworkThread(CallThread):
 	"""\
 	The network thread deals with talking to the server via the network.
 	"""
+	name = "Network"
 
 	## These are network events
 	class NetworkFailureEvent(Exception):
@@ -445,6 +445,7 @@ class MediaThread(CallThread):
 	"""\
 	The media thread deals with downloading media off the internet.
 	"""
+	name = "Media"
 
 	## These are network events
 	class MediaFailureEvent(Exception):
@@ -572,13 +573,17 @@ class MediaThread(CallThread):
 from tp.netlib.discover import LocalBrowser as LocalBrowserB
 from tp.netlib.discover import RemoteBrowser as RemoteBrowserB
 class LocalBrowser(LocalBrowserB, threading.Thread):
+	name="LocalBrowser"
+
 	def __init__(self, *args, **kw):
-		threading.Thread.__init__(self)
+		threading.Thread.__init__(self, name=self.name)
 		LocalBrowserB.__init__(self, *args, **kw)
 
 class RemoteBrowser(RemoteBrowserB, threading.Thread):
+	name="RemoteBrowser"
+
 	def __init__(self, *args, **kw):
-		threading.Thread.__init__(self)
+		threading.Thread.__init__(self, name=self.name)
 		RemoteBrowserB.__init__(self, *args, **kw)
 	
 class FinderThread(CallThread):
@@ -588,6 +593,7 @@ class FinderThread(CallThread):
 	It uses both Zeroconf and talks to the metaserver to get the information it
 	needs.
 	"""
+	name="Finder"
 
 	## These are network events
 	class GameEvent(object):

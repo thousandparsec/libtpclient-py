@@ -6,8 +6,6 @@ import time
 import threading
 import traceback
 
-
-from cache import Cache
 from media import Media
 
 from config import load_data, save_data
@@ -188,7 +186,23 @@ class CallThread(threading.Thread):
 		"""
 		self.tocall.append((method, args, kw))
 
-class NotImportantEvent(Exception):
+class Event(Exception):
+	"""
+	Base class for all events which get posted.
+	"""
+	def type(self):
+		return self.__class__.__name__[:-5]
+	type = property(type)
+
+	def __init__(self, *args, **kw):
+		Exception.__init__(self, *args, **kw)
+
+		if self.__class__.__name__[-5:] != "Event":
+			raise SystemError("All event class names must end with Event!")	
+
+		self.time = time.time()
+
+class NotImportantEvent(Event):
 	"""\
 	Not Important events are things like download progress events. They occur 
 	often and if one is missed there is not huge problem.
@@ -207,29 +221,31 @@ class NetworkThread(CallThread):
 	name = "Network"
 
 	## These are network events
-	class NetworkFailureEvent(Exception):
+	class NetworkFailureEvent(Event):
 		"""\
 		Raised when the network connection fails for what ever reason.
 		"""
 		pass
 
-	class NetworkConnectEvent(Exception):
+	class NetworkConnectEvent(Event):
 		"""\
 		Raised when the network connects to a server.
 		"""
 		pass
 
-	class NetworkAccountEvent(Exception):
+	class NetworkAccountEvent(Event):
 		"""\
 		Raised when an account is successful created on a server.
 		"""
 		pass
 
-	class NetworkAsyncFrameEvent(Exception):
+	class NetworkAsyncFrameEvent(Event):
 		"""\
 		Raised when an async frame (such as TimeRemaining) is received.
 		"""
 		def __init__(self, frame):
+			Event.__init__(self)
+
 			self.frame = frame
 
 	class NetworkTimeRemainingEvent(NetworkAsyncFrameEvent):
@@ -285,7 +301,7 @@ class NetworkThread(CallThread):
 		"""
 		Post an Event the current window.
 		"""
-		func = 'On' + event.__class__.__name__[:-5]
+		func = 'On' + event.type
 		if hasattr(self, func):
 			getattr(self, func)(event)
 
@@ -356,6 +372,7 @@ class NetworkThread(CallThread):
 			callback("connecting", "downloaded", _("Logged in okay!"), amount=1)
 
 			# Create a new cache
+			from cache import Cache
 			self.application.cache = Cache(Cache.key(host, username))
 			return True
 		finally:
@@ -448,14 +465,19 @@ class MediaThread(CallThread):
 	name = "Media"
 
 	## These are network events
-	class MediaFailureEvent(Exception):
+	class MediaFailureEvent(Event):
 		"""\
 		Raised when the media connection fails for what ever reason.
 		"""
 		pass
 
-	class MediaDownload:
+	class MediaDownloadEvent(Event):
+		"""
+		Base class for media download events.
+		"""
 		def __init__(self, file, progress=0, size=0, localfile=None, amount=0):
+			Event.__init__(self)
+
 			self.file      = file
 			self.amount    = amount
 			self.progress  = progress
@@ -466,36 +488,38 @@ class MediaThread(CallThread):
 			return "<%s %s>" % (self.__class__.__name__, self.file)
 		__repr__ = __str__
 
-	class MediaDownloadStartEvent(MediaDownload):
+	class MediaDownloadStartEvent(MediaDownloadEvent):
 		"""\
 		Posted when a piece of media is started being downloaded.
 		"""
 		pass
 
-	class MediaDownloadProgressEvent(MediaDownload, NotImportantEvent):
+	class MediaDownloadProgressEvent(MediaDownloadEvent, NotImportantEvent):
 		"""\
 		Posted when a piece of media is being downloaded.
 		"""
 		pass
 
-	class MediaDownloadDoneEvent(MediaDownload):
+	class MediaDownloadDoneEvent(MediaDownloadEvent):
 		"""\
 		Posted when a piece of media has been downloaded.
 		"""
 		pass
 
-	class MediaDownloadAbortEvent(Exception, MediaDownload):
+	class MediaDownloadAbortEvent(MediaDownloadEvent):
 		"""\
 		Posted when a piece of media started downloading but was canceled.
 		"""
 		def __str__(self):
 			return "<%s>" % (self.__class__.__name__)
 
-	class MediaUpdateEvent:
+	class MediaUpdateEvent(Event):
 		"""\
 		Posted when the media was download.
 		"""
 		def __init__(self, files):
+			Event.__init__(self)
+
 			self.files = files
 
 	######################################
@@ -596,8 +620,13 @@ class FinderThread(CallThread):
 	name="Finder"
 
 	## These are network events
-	class GameEvent(object):
+	class GameEvent(Event):
+		"""
+		Base class for all game found/lost events.
+		"""
 		def __init__(self, game):
+			Event.__init__(self)
+
 			self.game = game
 
 	class LostGameEvent(GameEvent):
@@ -636,13 +665,13 @@ class FinderThread(CallThread):
 		"""
 		pass
 
-	class FinderErrorEvent(Exception):
+	class FinderErrorEvent(Event):
 		"""\
 		Raised when the finder has an error finding games.
 		"""
 		pass
 
-	class FinderFinishedEvent(Exception):
+	class FinderFinishedEvent(Event):
 		"""\
 		Raised when the finder has finished searching for new games.
 		"""

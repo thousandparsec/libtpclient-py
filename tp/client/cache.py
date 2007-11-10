@@ -28,6 +28,7 @@ from tp.netlib.objects import Header, Description, OrderDescs, DynamicBaseOrder
 
 # Local imports
 from ChangeDict import ChangeDict
+from threads import Event
 
 class Cache(object):
 	"""\
@@ -37,11 +38,13 @@ class Cache(object):
 	"""
 	version = 4
 
-	class CacheEvent(object):
+	class CacheEvent(Event):
 		"""\
 		Raised when the game cache is made dirty. Contains a reference to what was updated.
 		"""
 		def __init__(self, what, action, id, *args, **kw):
+			Event.__init__(self)
+
 			if what in Cache.readonly:
 				raise ValueError("Can not change that!")
 			elif not what in Cache.readwrite:
@@ -93,6 +96,7 @@ class Cache(object):
 		"""
 		def __init__(self, what, *args, **kw):
 			if what == None:
+				Event.__init__(self)
 				self.what = None
 			else:
 				CacheEvent.__init__(self, what, *args, **kw)

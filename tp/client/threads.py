@@ -14,6 +14,25 @@ from version import version
 def nop(*args, **kw):
 	return
 
+class Event(Exception):
+	"""
+	Base class for all events which get posted.
+	"""
+	def type(self):
+		return self.__class__.__name__[:-5]
+	type = property(type)
+
+	def __init__(self, *args, **kw):
+		Exception.__init__(self, *args, **kw)
+
+		if self.__class__.__name__[-5:] != "Event":
+			raise SystemError("All event class names must end with Event!")	
+
+		self.time = time.time()
+
+
+
+from cache import Cache
 class Application(object):
 	"""
 	Container for all the applications threads and the network cache.
@@ -21,8 +40,9 @@ class Application(object):
 	Calling accross threads requires you to use the .Call method on each thread - DO NOT call directly!
 	The cache can be accessed by either thread at any time - be careful.
 	"""
-	MediaClass = None
+	MediaClass  = None
 	FinderClass = None
+	CacheClass  = Cache
 
 	def __init__(self):
 		try:
@@ -47,6 +67,9 @@ class Application(object):
 			self.finder = None
 
 		self.cache = None
+
+		if hasattr(self.GUIClass, "Create"):
+			self.gui.Create()
 		
 		# Load the Configuration
 		self.ConfigLoad()
@@ -82,10 +105,12 @@ class Application(object):
 	
 		self.gui.ConfigLoad(config)
 
-	def Post(self, event):
+	def Post(self, event, source=None):
 		"""\
 		Post an application wide event to every thread.
 		"""
+		event.source = source
+
 		self.network.Call(self.network.Post, event)
 		self.finder.Call(self.finder.Post, event)
 		self.media.Call(self.media.Post, event)
@@ -185,22 +210,6 @@ class CallThread(threading.Thread):
 		Queue a call to method in on thread.
 		"""
 		self.tocall.append((method, args, kw))
-
-class Event(Exception):
-	"""
-	Base class for all events which get posted.
-	"""
-	def type(self):
-		return self.__class__.__name__[:-5]
-	type = property(type)
-
-	def __init__(self, *args, **kw):
-		Exception.__init__(self, *args, **kw)
-
-		if self.__class__.__name__[-5:] != "Event":
-			raise SystemError("All event class names must end with Event!")	
-
-		self.time = time.time()
 
 class NotImportantEvent(Event):
 	"""\
@@ -372,8 +381,7 @@ class NetworkThread(CallThread):
 			callback("connecting", "downloaded", _("Logged in okay!"), amount=1)
 
 			# Create a new cache
-			from cache import Cache
-			self.application.cache = Cache(Cache.key(host, username))
+			self.application.cache = self.application.CacheClass(self.application.CacheClass.key(host, username))
 			return True
 		finally:
 			callback("connecting", "finished", "")

@@ -114,6 +114,10 @@ class Application(object):
 		self.network.Call(self.network.Post, event)
 		self.finder.Call(self.finder.Post, event)
 		self.media.Call(self.media.Post, event)
+
+		print "Post", event, event.source
+		import traceback
+		#traceback.print_stack()
 		self.gui.Call(self.gui.Post, event)
 
 	def Exit(self, *args, **kw):
@@ -404,7 +408,7 @@ class NetworkThread(CallThread):
 		try:
 			if evt.what == "orders":
 				if evt.action in ("remove", "change"):
-					if failed(self.connection.remove_orders(evt.id, evt.slot)):
+					if failed(self.connection.remove_orders(evt.id, evt.slots)):
 						raise IOError("Unable to remove the order...")
 				
 				if evt.action in ("create", "change"):
@@ -420,8 +424,9 @@ class NetworkThread(CallThread):
 						raise IOError("Unable to get the order..." + o[1])
 
 					evt.change = o
+
 			elif evt.what == "messages" and evt.action == "remove":
-				if failed(self.connection.remove_messages(evt.id, evt.slot)):
+				if failed(self.connection.remove_messages(evt.id, evt.slots)):
 					raise IOError("Unable to remove the message...")
 			elif evt.what == "designs":
 				# FIXME: Assuming that these should succeed is BAD!

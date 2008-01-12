@@ -64,7 +64,13 @@ class Cache(object):
 				if len(args) == 2:
 					self.slot = args.pop(0)
 				elif kw.has_key('slot'):
-					self.slot = kw['slot']
+					self.slot  = kw['slot']
+					self.slots = [self.slot]
+				elif kw.has_key('slots'):
+					if not action is "remove":
+						raise ValueError("Slots is only valid with a remove action")
+					self.slot  = None
+					self.slots = kw['slots']
 				else:
 					raise TypeError("A slot value is required for compound types.")
 
@@ -72,16 +78,23 @@ class Cache(object):
 				self.change = args.pop(0)
 			elif kw.has_key('change'):
 				self.change = kw['change']
+			elif action is "remove":
+				pass
 			else:
 				raise TypeError("The actual change needs to be added.")
 
 		def __str__(self):
 			if not self.what:
-				return "<%s full-update>" % (self.__class__,)
+				return "<%s full-update>" % (self.__class__.__name__,)
 			elif hasattr(self, 'slot'):
-				return "<%s %s %s id=%i slot=%i>" % (self.__class__, self.what, self.action, self.id, self.slot)
+				if self.slot is None:
+					return "<%s %s %s id=%i slots=%r>" % (self.__class__.__name__, self.what, self.action, self.id, self.slots)
+				else:
+					return "<%s %s %s id=%i slot=%i>" % (self.__class__.__name__, self.what, self.action, self.id, self.slot)
 			else:
-				return "<%s %s %s id=%i>" % (self.__class__, self.what, self.action, self.id)
+				return "<%s %s %s id=%i>" % (self.__class__.__name__, self.what, self.action, self.id)
+
+		__repr__ = __str__
 
 	class CacheDirtyEvent(CacheEvent):
 		"""\
@@ -210,6 +223,7 @@ class Cache(object):
 				del getattr(self, evt.what)[evt.id]
 		else:
 			d = getattr(self, evt.what)[evt.id]
+
 			if evt.action == "create":
 				if evt.slot == -1:
 					d.append(evt.change)
@@ -219,7 +233,10 @@ class Cache(object):
 			elif evt.action == "change":
 				d[evt.slot] = evt.change
 			elif evt.action == "remove":
-				del d[evt.slot]
+				for slot in evt.slots:
+					del d[slot]
+			else:
+				assert(false, "Unknown action!")
 
 			# FIXME: This should update order_number, number on Object/Board..
 
@@ -268,6 +285,7 @@ class Cache(object):
 
 				if not self.orders.has_key(id):
 					self.orders[id] = (self.objects.times[id], [])
+
 				self.orders[id].append(p)
 
 		for id in self.objects.keys():
@@ -531,6 +549,7 @@ class Cache(object):
 			else:
 				c(sb, "downloaded", amount=1, \
 					message=_("Got %i %s for %s (id: %s)...") % (len(result), sb, str(frame.name), frame.id))
+
 			getattr(self, sb)[id] = (cache(id).modify_time, result)
 
 		c(sb, "progress", message=_("Cleaning up any stray %s..") % sb)

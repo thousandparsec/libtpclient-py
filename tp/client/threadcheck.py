@@ -1,21 +1,21 @@
 import threading
-from decorators import simple_decorator
+from decorator import decorator
 
-@simple_decorator
-def thread_check_callable(func):
-	def wrapper( self, *args, **kw ):
-		assert self._thread is threading.currentThread(), "%s can only be called by %s not %s" % (func, self._thread, threading.currentThread())
-		return func(self, *args, **kw)
-	return wrapper
+@decorator
+def thread_check_callable(func, self, *args, **kw):
+	assert self._thread is threading.currentThread(), "%s can only be called by %s not %s" % (func, self._thread, threading.currentThread())
+	return func(self, *args, **kw)
 
-def thread_check_init(func):
-	def wrapper( self, *args, **kw):
-		self._thread = threading.currentThread()
-		func(self, *args, **kw)
-	return wrapper
+@decorator
+def thread_check_init(func, self, *args, **kw):
+	self._thread = threading.currentThread()
+	return func(self, *args, **kw)
 
-@simple_decorator
-def thread_safe( func ):
+def thread_safe(func):
+	"""
+	Mark this function as thread safe so can be called accross thread
+	boundaries.  
+	"""
 	func.__threadsafe = True
 	return func
 
@@ -45,6 +45,9 @@ if __name__ == "__main__":
 	class B(object):
 		__metaclass__ = thread_checker
 
+		def __init__(self):
+			pass
+
 		test_simple  = 2
 		test_complex = [1, 3]
 
@@ -70,7 +73,9 @@ if __name__ == "__main__":
 	ot = t1(B())
 
 	print ot.i.test_safe
+	print inspect.getargspec(ot.i.test_safe)
 	print ot.i.test_unsafe	
+	print inspect.getargspec(ot.i.test_unsafe)
 	
 	ot.run()
 

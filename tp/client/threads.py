@@ -604,7 +604,11 @@ class MediaThread(CallThread):
 		ConnectTo 
 		"""
 		self.cache = Media("http://svn.thousandparsec.net/svn/media/client/")
-		files = self.cache.getpossible(['png', 'gif'])
+
+		# FIXME: Hack to prevent cross thread calling - should fix the media object
+		files = []
+		for file in self.cache.getpossible(['png', 'gif']):
+			files.append(file)
 		self.application.Post(self.MediaUpdateEvent(files))
 
 from tp.netlib.discover import LocalBrowser as LocalBrowserB

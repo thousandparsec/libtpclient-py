@@ -96,7 +96,7 @@ class URLOpener(urllib.FancyURLopener):
 	def http_error_default(self, file, socket, code, reason, message):
 		raise IOError(code, reason)
 
-from threadcheck import thread_checker
+from threadcheck import thread_checker, thread_safe
 class Media(object):
 	__metaclass__ = thread_checker
 
@@ -127,6 +127,7 @@ class Media(object):
 			raise IOError("Unknown hash algorithm.")
 		return hash
 
+	@thread_safe
 	def metainfo(self, file):
 		"""\
 		Return the info in the metafile.
@@ -134,6 +135,7 @@ class Media(object):
 		modtime, size, checksum = open(file+'.meta', 'r').read().strip().split(' ')
 		return modtime, long(size), checksum
 
+	@thread_safe
 	def locate(self, file):
 		"""\
 		Locates a file with a given filename on the filesystem.
@@ -146,6 +148,7 @@ class Media(object):
 				foundhere.append(possible)
 		return foundhere
 
+	@thread_safe
 	def newest(self, file):
 		"""\
 		Returns the newest version of a file.

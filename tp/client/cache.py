@@ -30,12 +30,15 @@ from tp.netlib.objects import Header, Description, OrderDescs, DynamicBaseOrder
 from ChangeDict import ChangeDict
 from threads import Event
 
+from threadcheck import thread_checker
 class Cache(object):
 	"""\
 	This is the a cache of the data downloaded from the network. 
 
 	It can be pickled and restored at a later date to preserve the data accross application runs.
 	"""
+	__metaclass__ = thread_checker
+
 	version = 4
 
 	class CacheEvent(Event):
@@ -122,6 +125,7 @@ class Cache(object):
 	actions = ("create", "remove", "change")
 	compound = ("orders", "messages")
 
+	@staticmethod
 	def key(server, username):
 		key = server
 
@@ -137,13 +141,13 @@ class Cache(object):
 			p, s = key.split('//', 1)
 			key = "%s//%s@%s" % (p, username, s)
 		return key
-	key = staticmethod(key)
 
+	@staticmethod
 	def configkey(key):
 		key = base64.encodestring(key)[:-2]
 		return key
-	configkey = staticmethod(configkey)
 
+	@staticmethod
 	def configdir():
 		dirs = [("APPDATA", "Thousand Parsec"), ("HOME", ".tp"), (".", "var")]
 		for base, extra in dirs:
@@ -154,7 +158,6 @@ class Cache(object):
 				continue
 
 		return os.path.join(base, extra)
-	configdir = staticmethod(configdir)
 
 	def __init__(self, key, configdir=None, new=False):
 		"""\
@@ -305,6 +308,7 @@ class Cache(object):
 
 		p = copy.copy(self.__dict__)
 		del p['orders']
+		del p['_thread']
 		pickle.dump(p, f)
 
 		# Save each dynamic order description

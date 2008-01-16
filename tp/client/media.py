@@ -96,7 +96,10 @@ class URLOpener(urllib.FancyURLopener):
 	def http_error_default(self, file, socket, code, reason, message):
 		raise IOError(code, reason)
 
-class Media:
+from threadcheck import thread_checker
+class Media(object):
+	__metaclass__ = thread_checker
+
 	def configdir():
 		dirs = [("APPDATA", "Thousand Parsec"), ("HOME", ".tp"), (".", "var")]
 		for base, extra in dirs:
@@ -315,19 +318,18 @@ class Media:
 		# Append the users "localdir"
 		self.locations.append(userdir)
 
-
+	@property
 	def connection(self):
 		if not hasattr(self, '_connection'):
 			type, host, self.basepath, t, t, t = urlparse.urlparse(self.url)
 			self._connection = getattr(httplib, "%sConnection" % type.upper())(host)
 		return self._connection
-	connection = property(connection)
 
+	@property
 	def getter(self):
 		if not hasattr(self, '_getter'):
 			self._getter = URLOpener()
 		return self._getter
-	getter = property(getter)
 
 	def getpossible(self, media_types):
 		"""

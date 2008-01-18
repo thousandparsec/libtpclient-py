@@ -375,7 +375,7 @@ class Cache(object):
 		ids = []
 		for id, time in connection.get_orderdesc_ids(iter=True):
 			if OrderDescs().has_key(id) and hasattr(OrderDescs()[id], "modify_time"):
-				if time < OrderDescs()[id].modify_time:
+				if time <= OrderDescs()[id].modify_time:
 					continue
 			ids.append(id)
 		c("orderdescs", "todownload", todownload=len(ids))

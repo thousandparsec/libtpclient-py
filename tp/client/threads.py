@@ -3,7 +3,6 @@ import pprint
 import socket
 import sys
 import time
-import threading
 import traceback
 
 from media import Media
@@ -29,7 +28,6 @@ class Event(Exception):
 			raise SystemError("All event class names must end with Event!")	
 
 		self.time = time.time()
-
 
 
 from cache import Cache
@@ -111,12 +109,12 @@ class Application(object):
 		"""
 		event.source = source
 
-		self.network.Call(self.network.Post, event)
-		self.finder.Call(self.finder.Post, event)
-		self.media.Call(self.media.Post, event)
+		self.network.Post(event)
+		self.finder.Post(event)
+		self.media.Post(event)
 
-		print "Post", event, event.source
-		import traceback
+		#print "Post", event, event.source
+		#import traceback
 		#traceback.print_stack()
 		self.gui.Call(self.gui.Post, event)
 
@@ -133,6 +131,10 @@ class Application(object):
 		self.media.Cleanup()
 		self.gui.Cleanup()
 
+
+import threading
+from threadcheck import thread_checker, thread_safe
+
 class CallThreadStop(Exception):
 	pass
 ThreadStop = CallThreadStop
@@ -145,13 +147,17 @@ class CallThread(threading.Thread):
 	Functions are called in the order they are queue and there is no prempting
 	or other fancy stuff.
 	"""
+	__metaclass__ = thread_checker
+
 	def __init__(self):
 		threading.Thread.__init__(self, name=self.name)
 		self.exit = False
 		self.reset = False
 		self.tocall = []
-	
+
+	@thread_safe
 	def run(self):
+		self._thread = threading.currentThread()
 		while not self.exit:
 			self.every()
 
@@ -202,6 +208,7 @@ class CallThread(threading.Thread):
 		#del self.tocall[:]
 		self.reset = True
 
+	@thread_safe
 	def Cleanup(self):
 		"""\
 		Ask the thread to try and exit.
@@ -209,11 +216,18 @@ class CallThread(threading.Thread):
 		del self.tocall[:]
 		self.exit = True
 
+	@thread_safe
 	def Call(self, method, *args, **kw):
 		"""\
 		Queue a call to method in on thread.
 		"""
 		self.tocall.append((method, args, kw))
+
+	@thread_safe
+	def Post(self, event):
+		func = 'On' + event.type
+		if hasattr(self, func):
+			self.Call(getattr(self, func), event)
 
 class NotImportantEvent(Event):
 	"""\
@@ -310,14 +324,6 @@ class NetworkThread(CallThread):
 		else:
 			raise
 
-	def Post(self, event):
-		"""
-		Post an Event the current window.
-		"""
-		func = 'On' + event.type
-		if hasattr(self, func):
-			getattr(self, func)(event)
-
 	def NewAccount(self, username, password, email):
 		"""\
 		"""
@@ -413,17 +419,23 @@ class NetworkThread(CallThread):
 				
 				if evt.action in ("create", "change"):
 					# FIXME: Maybe an insert_order should return the order object not okay/fail
+
+					print "insert_order", evt.id, evt.slot, repr(evt.change)
+
 					if failed(self.connection.insert_order(evt.id, evt.slot, evt.change)):
 						raise IOError("Unable to insert the order...")
 
 					if evt.slot == -1:
 						evt.slot = len(self.application.cache.orders[evt.id])
-						
+					
 					o = self.connection.get_orders(evt.id, evt.slot)[0]
 					if failed(o):
 						raise IOError("Unable to get the order..." + o[1])
 
 					evt.change = o
+
+					print "get_order", evt.id, evt.slot, repr(evt.change)
+
 
 			elif evt.what == "messages" and evt.action == "remove":
 				if failed(self.connection.remove_messages(evt.id, evt.slots)):
@@ -576,11 +588,13 @@ class MediaThread(CallThread):
 			self.application.Post(self.MediaFailureEvent(s))
 		raise
 
+	@thread_safe
 	def Cleanup(self):
 		for file in self.todownload:
 			self.tostop.append(file)
 		CallThread.Cleanup(self)
 
+	@thread_safe
 	def Post(self, event):
 		"""
 		Post an Event the current thread.
@@ -707,15 +721,19 @@ class FinderThread(CallThread):
 		self.remote.GameFound = self.FoundRemoteGame
 		self.remote.GameGone  = self.LostRemoteGame
 
+	@thread_safe
 	def FoundLocalGame(self, game):
 		self.application.Post(FinderThread.FoundLocalGameEvent(game))
 
+	@thread_safe
 	def FoundRemoteGame(self, game):
 		self.application.Post(FinderThread.FoundRemoteGameEvent(game))
 
+	@thread_safe
 	def LostLocalGame(self, game):
 		self.application.Post(FinderThread.LostLocalGameEvent(game))
 
+	@thread_safe
 	def LostRemoteGame(self, game):
 		self.application.Post(FinderThread.LostRemoteGameEvent(game))
 
@@ -725,16 +743,21 @@ class FinderThread(CallThread):
 		"""
 		return self.local.games, self.remote.games
 
+	@thread_safe
 	def Cleanup(self):
 		self.local.exit()
 		self.remote.exit()
 
+	@thread_safe
 	def Post(self, event):
 		"""
 		Post an Event the current thread.
 		"""
 		pass
 
+	@thread_safe	
 	def run(self):
+		self._thread = threading.currentThread()
+
 		self.local.start()
 		self.remote.start()

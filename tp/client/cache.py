@@ -27,10 +27,13 @@ from tp.netlib import Connection, failed, constants, objects
 from tp.netlib.objects import Header, Description, OrderDescs, DynamicBaseOrder
 
 # Local imports
+# FIXME: Should I think about merging the ChangeList and ChangeDict?
 from ChangeDict import ChangeDict
-from threads import Event
+from ChangeList import ChangeList, ChangeNode
 
-from threadcheck import thread_checker
+from threads import Event
+from threadcheck import thread_checker, thread_safe
+
 class Cache(object):
 	"""\
 	This is the a cache of the data downloaded from the network. 
@@ -39,7 +42,7 @@ class Cache(object):
 	"""
 	__metaclass__ = thread_checker
 
-	version = 4
+	version = 5
 
 	class CacheEvent(Event):
 		"""\
@@ -55,27 +58,38 @@ class Cache(object):
 			else:
 				self.what = what
 
-			if not action in Cache.actions:
-				raise ValueError("Invalid action (%s)" % (action,))
+			if what in Cache.compound:
+				if not action in Cache.actions_compound:
+					raise ValueError("Invalid action (%s)" % (action,))
 			else:
-				self.action = action
+				if not action in Cache.actions:
+					raise ValueError("Invalid action (%s)" % (action,))
+			self.action = action
 
 			self.id = id
 
 			args = list(args)
 			if what in Cache.compound:
 				if len(args) == 2:
-					self.slot = args.pop(0)
-				elif kw.has_key('slot'):
-					self.slot  = kw['slot']
-					self.slots = [self.slot]
-				elif kw.has_key('slots'):
+					self.node = args.pop(0)
+				elif kw.has_key('node'):
+					self.node = kw['node']
+				elif kw.has_key('nodes'):
 					if not action is "remove":
 						raise ValueError("Slots is only valid with a remove action")
-					self.slot  = None
-					self.slots = kw['slots']
+					self.node  = None
+					self.nodes = kw['nodes']
 				else:
-					raise TypeError("A slot value is required for compound types.")
+					raise TypeError("A node is required for compound types.")
+				if not hasattr(self, "nodes"):
+					self.nodes = [self.node]
+
+			# Do a type check for the nodes
+			for node in self.nodes:
+				if (not node is None) and not isinstance(node, ChangeNode):
+					raise TypeError("Nodes must be of type ChangeNode not %s (%r)" % (type(node), node))
+
+				assert node.inlist()
 
 			if len(args) == 1:
 				self.change = args.pop(0)
@@ -89,11 +103,11 @@ class Cache(object):
 		def __str__(self):
 			if not self.what:
 				return "<%s full-update>" % (self.__class__.__name__,)
-			elif hasattr(self, 'slot'):
-				if self.slot is None:
-					return "<%s %s %s id=%i slots=%r>" % (self.__class__.__name__, self.what, self.action, self.id, self.slots)
+			elif hasattr(self, 'node'):
+				if self.node is None:
+					return "<%s %s %s id=%i nodes=%r>" % (self.__class__.__name__, self.what, self.action, self.id, self.nodes)
 				else:
-					return "<%s %s %s id=%i slot=%i>" % (self.__class__.__name__, self.what, self.action, self.id, self.slot)
+					return "<%s %s %s id=%i node=%r>" % (self.__class__.__name__, self.what, self.action, self.id, self.node)
 			else:
 				return "<%s %s %s id=%i>" % (self.__class__.__name__, self.what, self.action, self.id)
 
@@ -123,6 +137,7 @@ class Cache(object):
 	readwrite = ("orders", "messages", "categories", "designs")
 	# How we can update the Cache
 	actions = ("create", "remove", "change")
+	actions_compound = ("create before", "create after", "remove", "change")
 	compound = ("orders", "messages")
 
 	@staticmethod
@@ -211,9 +226,57 @@ class Cache(object):
 		self.players		= ChangeDict()
 		self.resources		= ChangeDict()
 
-	def apply(self, evt):
+	@thread_safe # FIXME: This probably isn't thread safe!
+	def apply(self, *args, **kw):
+		"""\
+		Given a CacheDirtyEvent, it sets up the changes...
+		"""
+		evt = Cache.CacheDirtyEvent(*args, **kw)
+
+		if not evt.what in Cache.compound:
+			return evt
+		else:
+			d = getattr(self, evt.what)[evt.id]
+
+			if evt.action == "remove":
+				for node in evt.nodes:
+					node.AddState("removing")
+				evt.change = None
+
+			elif evt.action == "change":
+				assert len(evt.nodes) == 1
+				assert not evt.node.LastState in ("removed", "removing")
+
+				evt.node.AddState("updating", evt.change)
+				evt.change = evt.node
+
+			elif evt.action.startswith("create"):
+				assert len(evt.nodes) == 1
+
+				# Create the new node
+				newnode = ChangeNode(None)
+				newnode.AddState("creating", evt.change)
+
+				# Insert the node
+				if evt.action == "create after":
+					d.insert_after(evt.node,  newnode)
+				elif evt.action == "create before":
+					d.insert_before(evt.node, newnode)
+				else:
+					assert False, "Unknown action!"
+
+				# Set the new node as the change
+				evt.change = newnode
+			else:
+				assert False, "Unknown action!"
+
+			return evt
+
+	def commit(self, evt):
 		"""\
 		Given a CacheDirtyEvent it applies the changes to the cache.
+		It should be called after the changes have been confimed by the server.
+
 		It then mutates the event into a CacheUpdateEvent.
 		"""
 		if not isinstance(evt, self.CacheDirtyEvent):
@@ -224,24 +287,26 @@ class Cache(object):
 				getattr(self, evt.what)[evt.id] = (-1, evt.change)
 			elif evt.action == "remove":
 				del getattr(self, evt.what)[evt.id]
+
 		else:
 			d = getattr(self, evt.what)[evt.id]
 
-			if evt.action == "create":
-				if evt.slot == -1:
-					d.append(evt.change)
-				else:
-					d.insert(evt.slot, evt.change)
+			if evt.action.startswith("create") or evt.action == "change":
+				node = evt.change
 
-			elif evt.action == "change":
-				d[evt.slot] = evt.change
+				assert node.CurrentState in ("creating", "updating"), "Current state (%s) doesn't match action %s" % (node.CurrentState, evt.action)
+
+				node.PopState()
+
 			elif evt.action == "remove":
-				for slot in evt.slots:
-					del d[slot]
-			else:
-				assert(false, "Unknown action!")
+				for node in evt.nodes:
+					assert node.CurrentState == "removing"
 
-			# FIXME: This should update order_number, number on Object/Board..
+					del d[node.id]
+					node.PopState()
+			else:
+				raise SystemError("Unknown node state!")
+
 
 		evt.__class__ = self.CacheUpdateEvent
 
@@ -255,45 +320,31 @@ class Cache(object):
 		if v != self.version:
 			raise IOError("The cache is not of this version! (It's version %s)" % (v,))
 
-		# First load the pickle
-		d = pickle.load(f)
-		if d.has_key('file'):
-			del d['file']				# Stop the file being loaded
-		self.__dict__.update(d)
+		orderdescs, = struct.unpack('!I', f.read(4))
 
 		# Now load the order cache
-		self.orders = ChangeDict()
-		while True:
+		for i in xrange(0, orderdescs):
 			d = f.read(Header.size)
-			if len(d) != Header.size:
-				if len(d) != 0:
-					raise IOError("Garbage was found at the end!")
-				break
-
 			p = Header.fromstr(d)
 
 			d = f.read(p.length)
 			p.__process__(d)
 
-			# Descriptions
-			if isinstance(p, Description):
-				p.register()
-			# Orders
-			else:
-				# Get the ID number
-				id, = struct.unpack('!Q', f.read(8))
-				if not self.objects.has_key(id):
-					print "Cache Error: Found order (%s) for non-existant object (%s). " % (repr(p), id) 
-					continue
+			assert isinstance(p, Description)
+			p.register()
 
-				if not self.orders.has_key(id):
-					self.orders[id] = (self.objects.times[id], [])
+		# First load the pickle
+		d = pickle.load(f)
+		if d.has_key('file'):
+			del d['file']				# Stop the file being loaded
 
-				self.orders[id].append(p)
+		for clist in d['orders'].values():
+			for node in clist:
+				for pending in node._pending:
+					pending.__class__ = OrderDescs()[pending.subtype]
+				node._what.__class__ = OrderDescs()[node._what.subtype]
 
-		for id in self.objects.keys():
-			if not self.orders.has_key(id):
-				self.orders[id] = (self.objects.times[id], [])
+		self.__dict__.update(d)
 
 	def save(self):
 		"""\
@@ -306,23 +357,37 @@ class Cache(object):
 		f = open(file, 'wb')
 		f.write(struct.pack('!I', self.version))
 
+		# Save each dynamic order description
+		descriptions = OrderDescs()
+
+		f.write(struct.pack('!I', len(descriptions)))
+		for orderdesc in descriptions.values():
+			f.write(str(orderdesc.packet))
+
 		p = copy.copy(self.__dict__)
-		del p['orders']
 		del p['_thread']
+
+		# Stop referencing the dynamic orders
+		for clist in p['orders'].values():
+			for node in clist:
+				for pending in node._pending:
+					subtype = pending.subtype
+					pending.__class__ = DynamicBaseOrder
+					pending.subtype = subtype
+
+				subtype = node._what.subtype
+				node._what.__class__ = DynamicBaseOrder
+				node._what.subtype = subtype
+
 		pickle.dump(p, f)
 
-		# Save each dynamic order description
-		for orderdesc in OrderDescs().values():
-			#print orderdesc, type(orderdesc), issubclass(orderdesc, DynamicBaseOrder)
-			if issubclass(orderdesc, DynamicBaseOrder):
-				f.write(str(orderdesc.packet))
-
-		# Save each order now
-		for id in self.orders.keys():
-			if self.objects.has_key(id):
-				for order in self.orders[id]:
-					f.write(str(order))
-					f.write(struct.pack('!Q', id))
+		# FIXME: The above copy should not be mutating!
+		for clist in p['orders'].values():
+			for node in clist:
+				for pending in node._pending:
+					pending.__class__ = OrderDescs()[pending.subtype]
+				node._what.__class__ = OrderDescs()[node._what.subtype]
+			
 		f.close()
 
 		# Restore the file
@@ -534,7 +599,7 @@ class Cache(object):
 				empty.append(id)
 
 		for id in empty:
-			getattr(self, sb)[id] = (cache(id).modify_time, [])
+			getattr(self, sb)[id] = (cache(id).modify_time, ChangeList())
 			toget.remove(id)
 
 		# Wait for the response to the order requests
@@ -554,7 +619,11 @@ class Cache(object):
 				c(sb, "downloaded", amount=1, \
 					message=_("Got %i %s for %s (id: %s)...") % (len(result), sb, str(frame.name), frame.id))
 
-			getattr(self, sb)[id] = (cache(id).modify_time, result)
+			subs = ChangeList()
+			for sub in result:
+				subs.append(ChangeNode(sub))
+
+			getattr(self, sb)[id] = (cache(id).modify_time, subs)
 
 		c(sb, "progress", message=_("Cleaning up any stray %s..") % sb)
 		for id in getattr(self, sb).keys():

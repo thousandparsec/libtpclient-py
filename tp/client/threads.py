@@ -31,6 +31,8 @@ class Event(Exception):
 
 
 from cache import Cache
+from ChangeList import ChangeNode
+
 class Application(object):
 	"""
 	Container for all the applications threads and the network cache.
@@ -413,33 +415,59 @@ class NetworkThread(CallThread):
 		"""
 		try:
 			if evt.what == "orders":
-				if evt.action in ("remove", "change"):
-					if failed(self.connection.remove_orders(evt.id, evt.slots)):
+				d = self.application.cache.orders[evt.id]
+
+				if evt.action == "remove":
+					slots = []
+					for node in evt.nodes:
+						assert isinstance(node, ChangeNode)
+						slots.append(d.index(node))
+					slots.sort(reverse=True)
+
+					if failed(self.connection.remove_orders(evt.id, slots)):
 						raise IOError("Unable to remove the order...")
 				
-				if evt.action in ("create", "change"):
-					# FIXME: Maybe an insert_order should return the order object not okay/fail
+				elif evt.action in ("create after", "create before", "change"):
+					assert len(evt.nodes) == 1, "%s event has multiple slots! (%r) WTF?" % (evt.action, evt.nodes)
+					assert evt.change in d
 
-					print "insert_order", evt.id, evt.slot, repr(evt.change)
+					slot = d.index(evt.change)
 
-					if failed(self.connection.insert_order(evt.id, evt.slot, evt.change)):
+					# FIXME: Hack!
+					for node in d[:slot]:
+						if node.CurrentState == "creating":
+							slot -= 1
+
+					if evt.action == "change":
+						# Remove the old order
+						if failed(self.connection.remove_orders(evt.id, slot)):
+							raise IOError("Unable to remove the order...")
+
+					assert not evt.change.CurrentState == "idle"
+					assert not evt.change.PendingOrder is None
+					if failed(self.connection.insert_order(evt.id, slot, evt.change.PendingOrder)):
 						raise IOError("Unable to insert the order...")
 
-					if evt.slot == -1:
-						evt.slot = len(self.application.cache.orders[evt.id])
-					
-					o = self.connection.get_orders(evt.id, evt.slot)[0]
+					o = self.connection.get_orders(evt.id, slot)[0]
 					if failed(o):
 						raise IOError("Unable to get the order..." + o[1])
 
-					evt.change = o
+					evt.change.UpdatePending(o)
 
-					print "get_order", evt.id, evt.slot, repr(evt.change)
-
+				else:
+					raise SystemError("Unknown Action")
 
 			elif evt.what == "messages" and evt.action == "remove":
-				if failed(self.connection.remove_messages(evt.id, evt.slots)):
+				d = self.application.cache.messages[evt.id]
+
+				slots = []
+				for node in evt.nodes:
+					slots.append(d.index(node))
+				slots.sort(reverse=True)
+
+				if failed(self.connection.remove_messages(evt.id, slots)):
 					raise IOError("Unable to remove the message...")
+
 			elif evt.what == "designs":
 				# FIXME: Assuming that these should succeed is BAD!
 				if evt.action == "remove":
@@ -472,7 +500,8 @@ class NetworkThread(CallThread):
 					evt.id = result.id
 			else:
 				raise ValueError("Can't deal with that yet!")
-			self.application.cache.apply(evt)
+
+			self.application.cache.commit(evt)
 			self.application.Post(evt)
 
 		except Exception, e:
@@ -601,9 +630,11 @@ class MediaThread(CallThread):
 		"""
 		pass
 
+	@thread_safe
 	def StopFile(self, file):
 		self.tostop.append(file)
 
+	@thread_safe
 	def GetFile(self, file):
 		"""\
 		Get a File, return directly or start a download.

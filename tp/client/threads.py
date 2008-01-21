@@ -768,6 +768,7 @@ class FinderThread(CallThread):
 	def LostRemoteGame(self, game):
 		self.application.Post(FinderThread.LostRemoteGameEvent(game))
 
+	@thread_safe
 	def Games(self):
 		"""\
 		Get all the currently known games.

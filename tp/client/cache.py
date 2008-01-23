@@ -591,7 +591,7 @@ class Cache(object):
 
 			if getattr(frame, number) > 0:
 				c(sb, "progress", \
-					message=_("Sending a request for all %s on %s..") % (sb, str(frame.name)))
+					message=_("Sending a request for all %s on %s..") % (sb, unicode(frame.name)))
 				getattr(connection, "get_%s" % sb)(id, range(0, getattr(frame, number)))
 			else:
 				c(sb, "progress", \
@@ -613,11 +613,12 @@ class Cache(object):
 
 			if failed(result):
 				c(sb, "failure", \
-					message=_("Failed to get %s for %s (id: %s) (%s)...") % (sb, str(frame.name), frame.id, result[1]))
+					message=_("Failed to get %s for %s (id: %s) (%s)...") % (sb, unicode(frame.name), frame.id, 
+result[1]))
 				result = []
 			else:
 				c(sb, "downloaded", amount=1, \
-					message=_("Got %i %s for %s (id: %s)...") % (len(result), sb, str(frame.name), frame.id))
+					message=_("Got %i %s for %s (id: %s)...") % (len(result), sb, unicode(frame.name), frame.id))
 
 			subs = ChangeList()
 			for sub in result:

@@ -595,7 +595,7 @@ class Cache(object):
 				getattr(connection, "get_%s" % sb)(id, range(0, getattr(frame, number)))
 			else:
 				c(sb, "progress", \
-					message=_("Skipping requesting %s on %s as there are none!") % (sb, str(frame.name)))
+					message=_("Skipping requesting %s on %s as there are none!") % (sb, unicode(frame.name)))
 				empty.append(id)
 
 		for id in empty:

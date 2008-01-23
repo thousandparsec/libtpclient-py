@@ -206,6 +206,7 @@ class CallThread(threading.Thread):
 		"""
 		pass
 
+	@thread_safe
 	def Reset(self):
 		#del self.tocall[:]
 		self.reset = True

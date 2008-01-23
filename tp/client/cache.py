@@ -476,7 +476,7 @@ class Cache(object):
 
 		c("players", "start", message=_("Getting your player object..."))
 		self.players[0] = connection.get_players(0)[0]
-		c("players", "finished", message=_("Gotten your player object..."))
+		c("players", "finished", message=_("Received your player object..."))
 
 	def __getObjects(self, connection, plural_name, callback):
 		"""\
@@ -562,7 +562,7 @@ class Cache(object):
 					build(cache(id), frame)
 			build(cache(0))
 
-		c(pn, "finished", message=_("Gotten all %s...") % pn)
+		c(pn, "finished", message=_("Received all %s...") % pn)
 
 		return toget
 
@@ -632,5 +632,5 @@ class Cache(object):
 				del getattr(self, sb)[id]
 
 		connection.setblocking(False)
-		c(sb, "finished", message=_("Gotten all the %s..") % sb)
+		c(sb, "finished", message=_("Received all the %s..") % sb)
 

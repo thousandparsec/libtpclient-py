@@ -455,7 +455,8 @@ class Cache(object):
 			else:
 				c("orderdescs", "failure",
 					message=_("Failed to get order description with id, %i (last modified at %s)...") % (id, time))
-		c("orderdescs", "finished", message=_("Finished getting order descriptions..."))
+
+		c("orderdescs", "finished", message=_("Recieved all order descriptions..."))
 
 		# Get all the objects
 		#############################################################################
@@ -463,9 +464,14 @@ class Cache(object):
 		toget = self.__getObjects(connection,   "objects", callback)
 		if toget > 0:
 			self.__getSubObjects(connection, toget, "objects", "orders", "order_number", callback)
+		else:
+			c("orders", "finished", message=_("Don't have any orders to get.."))
+
 		toget = self.__getObjects(connection,   "boards", callback)
 		if toget > 0:
 			self.__getSubObjects(connection, toget, "boards",  "messages", "number", callback)
+		else:
+			c("messages", "finished", message=_("Don't have any messages to get.."))
 
 		self.__getObjects(connection, "categories", callback)
 		self.__getObjects(connection, "designs",    callback)
@@ -562,7 +568,7 @@ class Cache(object):
 					build(cache(id), frame)
 			build(cache(0))
 
-		c(pn, "finished", message=_("Received all %s...") % pn)
+		c(pn, "finished", message=_("received all %s...") % pn)
 
 		return toget
 
@@ -591,7 +597,7 @@ class Cache(object):
 
 			if getattr(frame, number) > 0:
 				c(sb, "progress", \
-					message=_("Sending a request for all %s on %s..") % (sb, str(frame.name)))
+					message=_("Sending a request for all %s on %s..") % (sb, unicode(frame.name)))
 				getattr(connection, "get_%s" % sb)(id, range(0, getattr(frame, number)))
 			else:
 				c(sb, "progress", \
@@ -613,11 +619,11 @@ class Cache(object):
 
 			if failed(result):
 				c(sb, "failure", \
-					message=_("Failed to get %s for %s (id: %s) (%s)...") % (sb, str(frame.name), frame.id, result[1]))
+					message=_("Failed to get %s for %s (id: %s) (%s)...") % (sb, unicode(frame.name), frame.id, result[1]))
 				result = []
 			else:
 				c(sb, "downloaded", amount=1, \
-					message=_("Got %i %s for %s (id: %s)...") % (len(result), sb, str(frame.name), frame.id))
+					message=_("Got %i %s for %s (id: %s)...") % (len(result), sb, unicode(frame.name), frame.id))
 
 			subs = ChangeList()
 			for sub in result:

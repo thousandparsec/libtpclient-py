@@ -1,12 +1,17 @@
 
 # Python imports
 import os
+import sys
 import copy
 import base64
 import pprint
 import struct
 import traceback
-import cPickle as pickle
+
+if sys.platform == "darwin":
+	import pickle as pickle
+else:
+	import cPickle as pickle
 from datetime import datetime
 
 def df(time):
@@ -197,7 +202,7 @@ class Cache(object):
 			try:
 				self.load()
 				return
-			except (IOError, EOFError, KeyError), e:
+			except (IOError, EOFError, KeyError, pickle.PickleError), e:
 				print e
 				traceback.print_exc()
 				print "Unable to load the data, saved cache must be corrupt."

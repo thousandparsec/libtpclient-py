@@ -96,6 +96,25 @@ class URLOpener(urllib.FancyURLopener):
 	def http_error_default(self, file, socket, code, reason, message):
 		raise IOError(code, reason)
 
+class CallbackLimiter(object):
+	def __init__(self, realcallback):
+		self.realcallback = realcallback
+		self.last = 0
+
+
+	def __call__(self, i, chunksize, maxsize):
+		if self.realcallback is None:
+			return
+
+		downloaded = chunksize*i
+		if not (i == 0 or downloaded == maxsize):
+			# Skip if we have had a call back in the last 5 seconds
+			if self.last + 5 > time.time():
+				return
+
+		self.realcallback(i, chunksize, maxsize)
+		self.last  = time.time()
+
 from threadcheck import thread_checker, thread_safe
 class Media(object):
 	__metaclass__ = thread_checker
@@ -268,7 +287,7 @@ class Media(object):
 		if 1:		
 #		try:
 			# Download the file
-			(trash, message) = self.getter.retrieve(remote_location, local_location, callback)
+			(trash, message) = self.getter.retrieve(remote_location, local_location, CallbackLimiter(callback))
 
 			if file != MEDIA:
 				mediagz = self.media()

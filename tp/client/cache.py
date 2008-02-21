@@ -482,12 +482,28 @@ class Cache(object):
 		self.__getObjects(connection, "designs",    callback)
 		self.__getObjects(connection, "components", callback)
 		self.__getObjects(connection, "properties", callback)
-		#self.__getObjects(connection, "players",    callback)
+#		self.__getObjects(connection, "players",    callback)
 		self.__getObjects(connection, "resources",  callback)
 
 		c("players", "start", message=_("Getting your player object..."))
-		self.players[0] = connection.get_players(0)[0]
+
+		i = 0
+		while True:
+			player = connection.get_players(i)
+
+			if failed(player):
+				break
+			else:
+				self.players[i] = player[0]
+
+			c("players", "downloaded", amount=1, \
+				message=_("Got player %s (id: %i)...") % (player[0].name, player[0].id))
+
+			i += 1
+
 		c("players", "finished", message=_("Received your player object..."))
+		
+#		self.players[0] = connection.get_players(0)[0]
 
 	def __getObjects(self, connection, plural_name, callback):
 		"""\

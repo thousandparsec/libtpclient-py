@@ -410,6 +410,22 @@ class NetworkThread(CallThread):
 			self.application.Post(self.NetworkFailureEvent(e))	
 			raise
 
+	def RequestEOT(self, callback=None):
+		if callback is None:
+			def callback(self, *args, **kw):
+				pass
+
+		try:
+			if not hasattr(self.connection, "turnfinished"):
+				print "Was unable to request turnfinished."
+				return
+
+			if failed(self.connection.turnfinished()):
+				print "The request for end of turn failed."
+				return
+		except Exception, e:
+			print e
+
 	def OnCacheDirty(self, evt):
 		"""\
 		When the cache gets dirty we have to push the changes to the server.

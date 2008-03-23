@@ -35,6 +35,7 @@ class Event(Exception):
 	def __unicode__(self):
 		return self.message
 
+from cache import Cache
 from ChangeList import ChangeNode
 
 class Application(object):

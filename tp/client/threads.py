@@ -29,8 +29,12 @@ class Event(Exception):
 
 		self.time = time.time()
 
+	def __str__(self):
+		return self.message.encode('ascii', 'replace')
 
-from cache import Cache
+	def __unicode__(self):
+		return self.message
+
 from ChangeList import ChangeNode
 
 class Application(object):

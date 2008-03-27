@@ -563,32 +563,33 @@ class Cache(object):
 		if failed(frames):
 			raise IOError("Strange error occured, unable to request %s." % pn)
 
-		failures = []
+		# Match the results to the associated ids
 		for id, frame in zip(toget, frames):
 			if not failed(frame):
 				cache()[id] = (frame.modify_time, frame)
-			elif cache().has_key(id):
-				c(pn, "failure", \
-					message=_("Failed to get the %s which was previously called %s.") % (sn, cache(id).name))
-				del cache()[id]
 			else:
-				c(pn, "failure", \
-					message=_("Failed to get the %s with id %s.") % (sn, id))
-				failures.append(id)
+				if cache().has_key(id):
+					c(pn, "failure", \
+						message=_("Failed to get the %s which was previously called %s.") % (sn, cache(id).name))
+				else:
+					c(pn, "failure", \
+						message=_("Failed to get the %s with id %s.") % (sn, id))
+
+				# Don't get any sub-objects for this 
+				toget.remove(id)
+
+				# This object does not really exist on the server
+				ids.remove(id)
 
 		c(pn, "progress", message=_("Cleaning up %s which have disappeared...") % pn)
 
-		# Remove the failures from the toget queue
-		toget = list(set(toget)-set(failures))
-
-		gotten = set(ids)-set(failures)
-		having = set(cache().keys())
-		difference = having.difference(gotten)
-		for id in difference:
+		# Remove any objects which are no longer on the server
+		onserver  = set(ids)
+		havelocal = set(cache().keys())
+		for id in havelocal-onserver:
 			c(pn, "progress", \
 				message=_("Removing %s %s as it has disappeared...") % (sn, cache(id).name))
 			del cache()[id]
-			toget.remove(id)
 
 		if pn == "objects":
 			c(pn, "progress", \

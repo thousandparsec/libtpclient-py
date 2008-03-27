@@ -601,7 +601,7 @@ class Cache(object):
 					build(cache(id), frame)
 			build(cache(0))
 
-		c(pn, "finished", message=_("received all %s...") % pn)
+		c(pn, "finished", message=_("Received all %s...") % pn)
 
 		return toget
 

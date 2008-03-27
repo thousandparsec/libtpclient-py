@@ -563,6 +563,7 @@ class Cache(object):
 		if failed(frames):
 			raise IOError("Strange error occured, unable to request %s." % pn)
 
+		failures = []
 		for id, frame in zip(toget, frames):
 			if not failed(frame):
 				cache()[id] = (frame.modify_time, frame)
@@ -573,16 +574,21 @@ class Cache(object):
 			else:
 				c(pn, "failure", \
 					message=_("Failed to get the %s with id %s.") % (sn, id))
+				failures.append(id)
 
 		c(pn, "progress", message=_("Cleaning up %s which have disappeared...") % pn)
-		# Check for XXX which no longer exist..
-		gotten = set(ids)
+
+		# Remove the failures from the toget queue
+		toget = list(set(toget)-set(failures))
+
+		gotten = set(ids)-set(failures)
 		having = set(cache().keys())
 		difference = having.difference(gotten)
 		for id in difference:
 			c(pn, "progress", \
 				message=_("Removing %s %s as it has disappeared...") % (sn, cache(id).name))
 			del cache()[id]
+			toget.remove(id)
 
 		if pn == "objects":
 			c(pn, "progress", \

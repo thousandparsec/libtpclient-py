@@ -22,6 +22,7 @@ class Event(Exception):
 	type = property(type)
 
 	def __init__(self, *args, **kw):
+		self.message = ""
 		Exception.__init__(self, *args, **kw)
 
 		if self.__class__.__name__[-5:] != "Event":

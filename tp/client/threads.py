@@ -62,7 +62,6 @@ class Application(object):
 
 		print self.GUIClass, self.NetworkClass, self.MediaClass, self.FinderClass
 		self.gui = self.GUIClass(self)
-		self.network = self.NetworkClass(self)
 		if not self.MediaClass is None:
 			self.media = self.MediaClass(self)
 		else:
@@ -84,8 +83,6 @@ class Application(object):
 		"""\
 		Set the application running.
 		"""
-		self.network.start()
-
 		if not self.media is None:
 			self.media.start()
 
@@ -93,6 +90,10 @@ class Application(object):
 			self.finder.start()
 
 		self.gui.start()
+
+	def StartNetwork(self):
+		self.network = self.NetworkClass(self)
+		self.network.start()
 
 	def ConfigSave(self):
 		"""\
@@ -166,21 +167,26 @@ class CallThread(threading.Thread):
 	@thread_safe
 	def run(self):
 		self._thread = threading.currentThread()
-		while not self.exit:
-			self.every()
 
-			if len(self.tocall) <= 0:
-				self.idle()
-				continue
+		try:
+			while not self.exit:
+				self.every()
 
-			method, args, kw = self.tocall.pop(0)
-			try:
-				method(*args, **kw)
-			except CallThreadStop, e:
-				self.Reset()
-				self.reset = False
-			except Exception, e:
-				self.error(e)
+				if len(self.tocall) <= 0:
+					self.idle()
+					continue
+
+				method, args, kw = self.tocall.pop(0)
+				try:
+					method(*args, **kw)
+				except CallThreadStop, e:
+					self.Reset()
+					self.reset = False
+				except Exception, e:
+					self.error(e)
+
+		except Exception, e:
+			self.error(e)
 
 	def every(self):
 		"""\

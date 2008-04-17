@@ -599,7 +599,11 @@ class Cache(object):
 					frame.parent = parent.id
 
 				for id in frame.contains:
-					build(cache(id), frame)
+					try:
+						build(cache(id), frame)
+					except KeyError:
+						from threads import NetworkThread
+						raise NetworkThread.NetworkFailureEvent("%s (ID %i) references an object with ID %i, which does not exist!" % (frame.name, frame.id, id))
 			build(cache(0))
 
 		c(pn, "finished", message=_("Received all %s...") % pn)

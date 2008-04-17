@@ -83,6 +83,8 @@ class Application(object):
 		"""\
 		Set the application running.
 		"""
+		self.StartNetwork()
+
 		if not self.media is None:
 			self.media.start()
 

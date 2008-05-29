@@ -49,9 +49,16 @@ class ChangeNode(object):
 			return self._pending[0][0]
 
 	@property
+	def ServerOrder(self):
+		"""\
+		The value as it currently exists on the server.
+		"""
+		return self._what
+
+	@property
 	def PendingOrder(self):
 		"""\
-		Returns the first pending order.
+		Returns the first pending change.
 		"""
 		if len(self._pending) == 0:
 			return self._what

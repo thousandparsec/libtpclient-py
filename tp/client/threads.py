@@ -48,9 +48,13 @@ class Application(object):
 	"""
 	MediaClass  = None
 	FinderClass = None
-	CacheClass  = Cache
+	CacheClass  = None
 
 	def __init__(self):
+		if self.CacheClass is None:
+			from cache import Cache
+			self.CacheClass = Cache
+
 		try:
 			import signal
 
@@ -332,11 +336,12 @@ class NetworkThread(CallThread):
 	def error(self, error):
 		traceback.print_exc()
 		if isinstance(error, (IOError, socket.error)):
-			s  = _("There was an unknown network error.\n")
+			s  = _(u"There was an unknown network error.\n")
 			s += _("Any changes since last save have been lost.\n")
 			if getattr(self.connection, 'debug', False):
 				s += _("A traceback of the error was printed to the console.\n")
 				print error
+			print repr(s)
 			self.application.Post(self.NetworkFailureEvent(s))
 		else:
 			raise
@@ -445,103 +450,14 @@ class NetworkThread(CallThread):
 		When the cache gets dirty we have to push the changes to the server.
 		"""
 		try:
-			if evt.what == "orders":
-				d = self.application.cache.orders[evt.id]
-
-				if evt.action == "remove":
-					slots = []
-					for node in evt.nodes:
-						assert isinstance(node, ChangeNode)
-						slots.append(d.index(node))
-					slots.sort(reverse=True)
-
-					if failed(self.connection.remove_orders(evt.id, slots)):
-						raise IOError("Unable to remove the order...")
-				
-				elif evt.action in ("create after", "create before", "change"):
-					assert len(evt.nodes) == 1, "%s event has multiple slots! (%r) WTF?" % (evt.action, evt.nodes)
-					assert evt.change in d
-
-					slot = d.index(evt.change)
-
-					# FIXME: Hack!
-					for node in d[:slot]:
-						if node.CurrentState == "creating":
-							slot -= 1
-
-					if evt.action == "change":
-						# Remove the old order
-						if failed(self.connection.remove_orders(evt.id, slot)):
-							raise IOError("Unable to remove the order...")
-
-					assert not evt.change.CurrentState == "idle"
-					assert not evt.change.PendingOrder is None
-					if failed(self.connection.insert_order(evt.id, slot, evt.change.PendingOrder)):
-						raise IOError("Unable to insert the order...")
-
-					o = self.connection.get_orders(evt.id, slot)[0]
-					if failed(o):
-						raise IOError("Unable to get the order..." + o[1])
-
-					evt.change.UpdatePending(o)
-
-				else:
-					raise SystemError("Unknown Action")
-
-			elif evt.what == "messages" and evt.action == "remove":
-				d = self.application.cache.messages[evt.id]
-
-				slots = []
-				for node in evt.nodes:
-					slots.append(d.index(node))
-				slots.sort(reverse=True)
-
-				if failed(self.connection.remove_messages(evt.id, slots)):
-					raise IOError("Unable to remove the message...")
-
-			elif evt.what == "designs":
-				# FIXME: Assuming that these should succeed is BAD!
-				if evt.action == "remove":
-					if failed(self.connection.remove_designs(evt.change)):
-						raise IOError("Unable to remove the design...")
-				if evt.action == "change":
-					if failed(self.connection.change_design(evt.change)):
-						raise IOError("Unable to change the design...")
-				if evt.action == "create":
-					result = self.connection.insert_design(evt.change)
-					if failed(result):
-						raise IOError("Unable to add the design...")
-					
-					# Need to update the event with the new ID of the design.
-					evt.id = result.id
-			elif evt.what == "categories":
-				# FIXME: Assuming that these should succeed is BAD!
-				if evt.action == "remove":
-					if failed(self.connection.remove_categories(evt.change)):
-						raise IOError("Unable to remove the category...")
-				if evt.action == "change":
-					if failed(self.connection.change_category(evt.change)):
-						raise IOError("Unable to change the category...")
-				if evt.action == "create":
-					result = self.connection.insert_category(evt.change)
-					if failed(result):
-						raise IOError("Unable to add the category...")
-					
-					# Need to update the event with the new ID of the design.
-					evt.id = result.id
-			else:
-				raise ValueError("Can't deal with that yet!")
-
-			self.application.cache.commit(evt)
-			self.application.Post(evt)
-
+			from cache import apply
+			self.application.Post(apply(self.connection, evt, self.application.cache))
 		except Exception, e:
 			type, val, tb = sys.exc_info()
 			sys.stderr.write("".join(traceback.format_exception(type, val, tb)))
 			self.application.Post(self.NetworkFailureEvent(e))
 			"There where the following errors when trying to send changes to the server:"
 			"The following updates could not be made:"
-
 
 class MediaThread(CallThread):
 	"""\

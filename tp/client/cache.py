@@ -678,3 +678,93 @@ class Cache(object):
 		connection.setblocking(False)
 		c(sb, "finished", message=_("Received all the %s..") % sb)
 
+def apply(connection, evt, cache):
+	"""\
+	Applies a CacheDirty event to a connection.
+	"""
+	if evt.what == "orders":
+		d = cache.orders[evt.id]
+
+		if evt.action == "remove":
+			slots = []
+			for node in evt.nodes:
+				assert isinstance(node, ChangeNode)
+				slots.append(d.slot(node))
+			slots.sort(reverse=True)
+
+			if failed(connection.remove_orders(evt.id, slots)):
+				raise IOError("Unable to remove the order...")
+		
+		elif evt.action in ("create after", "create before", "change"):
+			assert len(evt.nodes) == 1, "%s event has multiple slots! (%r) WTF?" % (evt.action, evt.nodes)
+			assert evt.change in d
+
+			slot = d.slot(evt.change)
+			if evt.action == "change":
+				# Remove the old order
+				if failed(connection.remove_orders(evt.id, slot)):
+					raise IOError("Unable to remove the order...")
+
+			assert not evt.change.CurrentState == "idle"
+			assert not evt.change.PendingOrder is None
+			if failed(connection.insert_order(evt.id, slot, evt.change.PendingOrder)):
+				raise IOError("Unable to insert the order...")
+
+			o = connection.get_orders(evt.id, slot)[0]
+			if failed(o):
+				raise IOError("Unable to get the order..." + o[1])
+
+			evt.change.UpdatePending(o)
+
+		else:
+			raise SystemError("Unknown Action")
+
+	elif evt.what == "messages" and evt.action == "remove":
+		d = cache.messages[evt.id]
+
+		slots = []
+		for node in evt.nodes:
+			slots.append(d.slot(node))
+		slots.sort(reverse=True)
+
+		if failed(connection.remove_messages(evt.id, slots)):
+			raise IOError("Unable to remove the message...")
+
+	elif evt.what == "designs":
+
+		# FIXME: Assuming that these should succeed is BAD!
+		if evt.action == "remove":
+			if failed(connection.remove_designs(evt.change)):
+				raise IOError("Unable to remove the design...")
+		if evt.action == "change":
+			if failed(connection.change_design(evt.change)):
+				raise IOError("Unable to change the design...")
+		if evt.action == "create":
+			result = connection.insert_design(evt.change)
+			if failed(result):
+				raise IOError("Unable to add the design...")
+			
+			# Need to update the event with the new ID of the design.
+			evt.id = result.id
+
+	elif evt.what == "categories":
+
+		# FIXME: Assuming that these should succeed is BAD!
+		if evt.action == "remove":
+			if failed(connection.remove_categories(evt.change)):
+				raise IOError("Unable to remove the category...")
+		if evt.action == "change":
+			if failed(connection.change_category(evt.change)):
+				raise IOError("Unable to change the category...")
+		if evt.action == "create":
+			result = connection.insert_category(evt.change)
+			if failed(result):
+				raise IOError("Unable to add the category...")
+			
+			# Need to update the event with the new ID of the design.
+			evt.id = result.id
+	else:
+		raise ValueError("Can't deal with that yet!")
+
+	cache.commit(evt)
+	return evt

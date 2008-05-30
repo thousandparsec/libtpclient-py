@@ -213,6 +213,17 @@ class ChangeList(object):
 				return i
 		raise IndexError("%s was not found in the list!" % needle)
 
+	def slot(self, needle):
+		if needle is self.head:
+			return -1
+		i = 0
+		for node in self:
+			if node is needle:
+				return i
+			if node.CurrentState != "creating":
+				i += 1
+		raise IndexError("%s was not found in the list!" % needle)
+
 	def append(self, toappend):
 		node = self.head
 		while node.right != None:

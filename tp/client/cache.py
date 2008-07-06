@@ -47,7 +47,7 @@ class Cache(object):
 	"""
 	__metaclass__ = thread_checker
 
-	version = 5
+	version = 6
 
 	class CacheEvent(Event):
 		"""\
@@ -468,7 +468,8 @@ class Cache(object):
 		#############################################################################
 		toget = self.__getObjects(connection,   "objects", callback)
 		if toget > 0:
-			self.__getSubObjects(connection, toget, "objects", "orders", "order_number", callback)
+			#self.__getSubObjects(connection, toget, "objects", "orders", "order_number", callback)
+			self.__getOrders(connection, toget, callback)
 		else:
 			c("orders", "finished", message=_("Don't have any orders to get.."))
 
@@ -609,6 +610,90 @@ class Cache(object):
 		c(pn, "finished", message=_("Received all %s...") % pn)
 
 		return toget
+
+	#self.__getSubObjects(connection, toget, "objects", "orders", "order_number", callback)
+	def __getOrders(self, connection, toget, callback=None):
+		c = callback
+		pn = "objects"
+		sn = "object"
+
+		def cache(id=None, self=self, pn=pn):
+			if id==None:
+				return getattr(self, pn)
+			else:
+				return getattr(self, pn)[id]
+
+		c = callback
+		sb = "orders"
+
+		c(sb, "start", message=_("Getting %s..") % sb)
+		c(sb, "todownload", message=_("Have to get %s for %i %s..") % (sb, len(toget), pn), todownload=len(toget))
+
+		# Set the blocking so we can pipeline the requests
+		connection.setblocking(True)
+		gettingqueues = []
+		emptyqueues = []
+		for objectid in toget:
+			object = cache(objectid)
+		
+			from tp.netlib.objects.parameters import ObjectParamOrderQueue
+			for group in object.properties:
+				for property in group.structures:
+					if not isinstance(property, ObjectParamOrderQueue):
+						continue
+
+					value = getattr(getattr(object, group.name), property.name)
+					# Skip this queues we are alreadying getting
+					if value.queueid in gettingqueues or value.queueid in emptyqueues:
+						continue
+
+					if value.numorders > 0:
+						c(sb, "progress", \
+							message=_("Sending a request for all %s in queue %i on %s..") % (sb, value.queueid, unicode(object.name)))
+						getattr(connection, "get_%s" % sb)(value.queueid, range(0, value.numorders))
+						gettingqueues.append((objectid, value.queueid))
+					else:
+						c(sb, "progress", \
+							message=_("Skipping requesting %s on %s as there are none!") % (sb, unicode(object.name)))
+						emptyqueues.append(value.queueid)
+
+		print "Getting data for:"
+		print gettingqueues
+		print "The following where empty:"
+		print emptyqueues
+
+		for id in emptyqueues:
+			getattr(self, sb)[id] = (cache(id).modify_time, ChangeList())
+
+		# Wait for the response to the order requests
+		while len(gettingqueues) > 0:
+			result = None
+			while result is None:
+				result = connection.poll()
+
+			objectid, queueid = gettingqueues.pop(0)
+			if failed(result):
+				c(sb, "failure", \
+					message=_("Failed to get %s (id: %s) (%s)...") % (sb, queueid, result[1]))
+				result = []
+			else:
+				c(sb, "downloaded", amount=1, \
+					message=_("Got %i %s (id: %s)...") % (len(result), sb, queueid))
+
+			subs = ChangeList()
+			for sub in result:
+				subs.append(ChangeNode(sub))
+
+			getattr(self, sb)[queueid] = (cache(objectid).modify_time, subs)
+
+		c(sb, "progress", message=_("Cleaning up any stray %s..") % sb)
+		for id in getattr(self, sb).keys():
+			if not cache().has_key(id):
+				c(sb, "progress", message=_("Found stray %s for %s..") % (sb, id))
+				del getattr(self, sb)[id]
+
+		connection.setblocking(False)
+		c(sb, "finished", message=_("Received all the %s..") % sb)
 
 	def __getSubObjects(self, connection, toget, plural_name, subname, number, callback=None):
 		c = callback

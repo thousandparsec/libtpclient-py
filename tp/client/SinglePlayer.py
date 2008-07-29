@@ -1,3 +1,6 @@
+# Python imports
+import os
+
 # find an elementtree implementation
 ET = None
 errors = []
@@ -21,6 +24,10 @@ if ET is None:
     raise ImportError(str(errors))
 
 
+# TODO: do this properly
+sharedir = '/usr/share/tp'
+
+
 class ServerList(dict):
 	"""\
 	Builds a list of servers from multiple XML files.
@@ -28,6 +35,9 @@ class ServerList(dict):
 	"""
 
 	def absorb_xml(self, xmlfile):
+		"""\
+		Import an XML file describing a server or server component.
+		"""
 		xmltree = ET.parse(xmlfile)
 		for server in xmltree.findall('server'):
 			sname = server.attrib['name']
@@ -35,11 +45,11 @@ class ServerList(dict):
 				self[sname] = {}
 				self[sname]['parameters'] = {}
 				self[sname]['rulesets'] = {}
-			if not self[sname].has_key('longname'):
+			if not self[sname].has_key('longname') and server.find('longname') != None:
 				self[sname]['longname'] = server.find('longname').text
-			if not self[sname].has_key('version'):
+			if not self[sname].has_key('version') and server.find('version') != None:
 				self[sname]['version'] = server.find('version').text
-			if not self[sname].has_key('description'):
+			if not self[sname].has_key('description') and server.find('description') != None:
 				self[sname]['description'] = server.find('description').text
 			for sparam in server.findall('parameter'):
 				pname = sparam.attrib['name']
@@ -67,3 +77,21 @@ class ServerList(dict):
 						'default' : rparam.find('default').text, \
 						'commandstring' : rparam.find('commandstring').text \
 						}
+
+class SinglePlayerGame:
+	"""\
+	A single-player game manager.
+	"""
+	def __init__(self):
+		# build a server list
+		self.servers = ServerList()
+		for xmlfile in os.listdir(os.path.join(sharedir, 'servers')):
+			xmlfile = os.path.join(sharedir, 'servers', xmlfile)
+			if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
+				self.servers.absorb_xml(xmlfile)
+
+	def start(self, sname, port, sparams, ruleset, rparams, ainame, ainum, aiparams):
+		pass
+	
+	def stop(self):
+		pass

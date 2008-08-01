@@ -1,6 +1,7 @@
 # Python imports
 import os
 import time
+import socket
 
 # find an elementtree implementation
 ET = None
@@ -89,7 +90,7 @@ class AIList(dict):
 		xmltree = ET.parse(xmlfile)
 		for aiclient in xmltree.findall('aiclient'):
 			ainame = aiclient.attrib['name']
-			if not self.has_key(sname):
+			if not self.has_key(ainame):
 				self[ainame] = {}
 				self[ainame]['rules'] = []
 				self[ainame]['parameters'] = {}
@@ -114,35 +115,91 @@ class SinglePlayerGame:
 	"""
 
 	def __init__(self):
+		#reset active flag
+		self.active = False
+
 		# build a server list
 		self.serverlist = ServerList()
 		for xmlfile in os.listdir(os.path.join(sharedir, 'servers')):
 			xmlfile = os.path.join(sharedir, 'servers', xmlfile)
 			if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
 				self.serverlist.absorb_xml(xmlfile)
+
 		# build an AI client list
 		self.ailist = AIList()
 		for xmlfile in os.listdir(os.path.join(sharedir, 'aiclients')):
 			xmlfile = os.path.join(sharedir, 'aiclients', xmlfile)
 			if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
 				self.ailist.absorb_xml(xmlfile)
-		# prepare internals
-		aiclients = []
 
-	def add_aiclient(self, ainame, aiparams):
+		# prepare internals
+		self.opponents = []
+
+	def __del__(self):
+		if self.active:
+			self.stop()
+
+	def list_rulesets(self):
 		"""\
-		Adds an AI client to the game (before starting).
+		Returns a list of available rulesets from all servers.
+		"""
+		rulesets = []
+		for sname in self.serverlist.keys():
+			for rname in self.serverlist[sname]['rulesets'].keys():
+				if rname not in rulesets:
+					rulesets.append(rname)
+		return rulesets
+
+	def list_servers_with_ruleset(self, rname):
+		"""\
+		Returns a list of servers supporting a given ruleset.
+		"""
+		servers = []
+		for sname in self.serverlist.keys():
+			if self.serverlist[sname]['rulesets'].has_key(rname):
+				servers.append(sname)
+		return servers
+
+	def list_aiclients_with_ruleset(self, rname):
+		"""\
+		Returns a list of AI clients supporting a given ruleset.
+		"""
+		aiclients = []
+		for ainame in self.ailist.keys():
+			if rname in self.ailist[ainame]['rules']:
+				aiclients.append(ainame)
+		return aiclients
+
+	def add_opponent(self, ainame, aiparams):
+		"""\
+		Adds an AI client opponent to the game (before starting).
+
+		Parameters:
+		ainame (string) - the name of the AI client
+		aiparams (dict) - parameters {'name', 'value'}
 		"""
 		aiclient = { \
 			'name' : ainame,
 			'parameters' : aiparams }
-		aiclients.append(aiclient)
+		self.opponents.append(aiclient)
 
 	def start(self, sname, sparams, rname, rparams):
 		"""\
 		Starts the server and AI clients.
 		Returns True if successful (OK to connect).
+
+		Parameters:
+		sname (string) - the name of the server to start
+		sparams (dict) - server parameters {'name', 'value'}
+		rname (string) - the name of the ruleset to use
+		rparams (dict) - ruleset parameters {'name', 'value'}
 		"""
+		# find a free port
+		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		s.bind(('localhost',0))
+		port = s.getsockname()[1]
+		s.close()
+
 		try:
 			# start server
 			servercmd = os.path.join(sharedir, 'servers', sname + '.init') + ' start ' + str(port) + ' ' + rname
@@ -150,6 +207,7 @@ class SinglePlayerGame:
 				value = self.serverlist[sname]['parameters'][pname]['default']
 				if sparams.has_key(pname):
 					value = sparams[pname]
+				value = self._format_value(value, self.serverlist[sname]['parameters'][pname]['type'])
 				if value is None:
 					continue
 				servercmd += ' ' + self.serverlist[sname]['parameters'][pname]['commandstring'] % value
@@ -157,33 +215,69 @@ class SinglePlayerGame:
 				value = self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['default']
 				if rparams.has_key(pname):
 					value = rparams[pname]
+				value = self._format_value(value, self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['type'])
 				if value is None:
 					continue
 				servercmd += ' ' + self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['commandstring'] % value
 			if os.system(servercmd) is not 0:
 				raise InitError, 'Server ' + sname + ' failed to start'
+			self.sname = sname
 
 			# wait for the server to initialize
 			time.sleep(5)
 	
 			# start AI clients
-			for aiclient in aiclients:
-				aicmd = os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init') + ' start ' + str(port)
+			for aiclient in self.opponents:
+				aicmd = os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init') + ' start ' + str(port) + ' ' + rname
 				for pname in self.ailist[aiclient['name']]['parameters'].keys():
-					value = self.ailist[aiclient['name']]['parameters']['default']
+					value = self.ailist[aiclient['name']]['parameters'][pname]['default']
 					if aiclient['parameters'].has_key(pname):
 						value = aiclient['parameters'][pname]
+					value = self._format_value(value, self.ailist[aiclient['name']]['parameters'][pname]['type'])
 					if value is None:
 						continue
 					aicmd += ' ' + self.ailist[aiclient['name']]['parameters'][pname]['commandstring'] % value
 				if os.system(aicmd) is not 0:
 					raise InitError, 'AI client ' + aiclient['name'] + ' failed to start'
-		finally:
+
+			# set active flag
+			self.active = True
+
+		except:
 			self.stop()
+
+		return self.active
 
 	def stop(self):
 		"""\
 		Stops the server and AI clients.
 		Should be called by the client when disconnecting/closing.
 		"""
-		pass
+		# stop server
+		if self.sname:
+			servercmd = os.path.join(sharedir, 'servers', self.sname + '.init') + ' stop'
+			os.system(servercmd)
+			del self.sname
+
+		# stop AI clients
+		for aiclient in self.opponents:
+			aicmd = os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init') + ' stop'
+			os.system(aicmd)
+
+		# reset active flag
+		self.active = False
+
+	def _format_value(self, value, type):
+		"""\
+		Internal: formats a parameter value based on type.
+		"""
+		if value is None:
+			return None
+		elif type is 'I':
+			return int(value)
+		elif type is 'S':
+			return str(value)
+		elif type is 'B':
+			return ''
+		else:
+			return None

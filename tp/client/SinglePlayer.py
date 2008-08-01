@@ -1,5 +1,6 @@
 # Python imports
 import os
+import time
 
 # find an elementtree implementation
 ET = None
@@ -104,6 +105,9 @@ class AIList(dict):
 					'commandstring' : aiparam.find('commandstring').text }
 
 
+class InitError(Exception):
+	pass
+
 class SinglePlayerGame:
 	"""\
 	A single-player game manager.
@@ -117,7 +121,7 @@ class SinglePlayerGame:
 			if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
 				self.serverlist.absorb_xml(xmlfile)
 		# build an AI client list
-		self.ailsit = AIList()
+		self.ailist = AIList()
 		for xmlfile in os.listdir(os.path.join(sharedir, 'aiclients')):
 			xmlfile = os.path.join(sharedir, 'aiclients', xmlfile)
 			if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
@@ -129,38 +133,54 @@ class SinglePlayerGame:
 		"""\
 		Adds an AI client to the game (before starting).
 		"""
-		pass
+		aiclient = { \
+			'name' : ainame,
+			'parameters' : aiparams }
+		aiclients.append(aiclient)
 
 	def start(self, sname, sparams, rname, rparams):
 		"""\
 		Starts the server and AI clients.
 		Returns True if successful (OK to connect).
 		"""
-		# start server
-		servercmd = os.path.join(sharedir, 'servers', sname + '.init') + ' ' + str(port) + ' ' + rname
-		for pname in self.serverlist[sname]['parameters'].keys():
-			value = self.serverlist[sname]['parameters'][pname]['default']
-			if sparams.has_key(pname):
-				value = sparams[pname]
-			if value is None:
-				continue
-			servercmd += ' ' + self.serverlist[sname]['parameters'][sparam]['commandstring'] % value
-		for pname in self.serverlist[sname]['rulesets'][rname]['parameters'].keys():
-			value = self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['default']
-			if rparams.has_key(pname):
-				value = rparams[pname]
-			if value is None:
-				continue
-			servercmd += ' ' + self.serverlist[sname]['rulesets'][rname]['parameters'][rparam]['commandstring'] % value
-		if os.system(servercmd) is not 0:
-			return False
+		try:
+			# start server
+			servercmd = os.path.join(sharedir, 'servers', sname + '.init') + ' start ' + str(port) + ' ' + rname
+			for pname in self.serverlist[sname]['parameters'].keys():
+				value = self.serverlist[sname]['parameters'][pname]['default']
+				if sparams.has_key(pname):
+					value = sparams[pname]
+				if value is None:
+					continue
+				servercmd += ' ' + self.serverlist[sname]['parameters'][pname]['commandstring'] % value
+			for pname in self.serverlist[sname]['rulesets'][rname]['parameters'].keys():
+				value = self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['default']
+				if rparams.has_key(pname):
+					value = rparams[pname]
+				if value is None:
+					continue
+				servercmd += ' ' + self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['commandstring'] % value
+			if os.system(servercmd) is not 0:
+				raise InitError, 'Server ' + sname + ' failed to start'
 
-		# start AI clients
-		for aiclient in aiclients:
-			pass
-
-		return True
+			# wait for the server to initialize
+			time.sleep(5)
 	
+			# start AI clients
+			for aiclient in aiclients:
+				aicmd = os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init') + ' start ' + str(port)
+				for pname in self.ailist[aiclient['name']]['parameters'].keys():
+					value = self.ailist[aiclient['name']]['parameters']['default']
+					if aiclient['parameters'].has_key(pname):
+						value = aiclient['parameters'][pname]
+					if value is None:
+						continue
+					aicmd += ' ' + self.ailist[aiclient['name']]['parameters'][pname]['commandstring'] % value
+				if os.system(aicmd) is not 0:
+					raise InitError, 'AI client ' + aiclient['name'] + ' failed to start'
+		finally:
+			self.stop()
+
 	def stop(self):
 		"""\
 		Stops the server and AI clients.

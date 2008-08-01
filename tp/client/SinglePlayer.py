@@ -234,7 +234,6 @@ class SinglePlayerGame:
 				if value is None:
 					continue
 				servercmd += ' ' + self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['commandstring'] % value
-			print servercmd
 			if os.system(servercmd) is not 0:
 				raise InitError, 'Server ' + sname + ' failed to start'
 
@@ -254,7 +253,6 @@ class SinglePlayerGame:
 					if value is None:
 						continue
 					aicmd += ' ' + self.ailist[aiclient['name']]['parameters'][pname]['commandstring'] % value
-				print aicmd
 				if os.system(aicmd) is not 0:
 					raise InitError, 'AI client ' + aiclient['name'] + ' failed to start'
 

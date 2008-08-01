@@ -45,6 +45,7 @@ class ServerList(dict):
 			sname = server.attrib['name']
 			if not self.has_key(sname):
 				self[sname] = {}
+				self[sname]['forced'] = []
 				self[sname]['parameters'] = {}
 				self[sname]['rulesets'] = {}
 			if not self[sname].has_key('longname') and server.find('longname') is not None:
@@ -53,6 +54,8 @@ class ServerList(dict):
 				self[sname]['version'] = server.find('version').text
 			if not self[sname].has_key('description') and server.find('description') is not None:
 				self[sname]['description'] = server.find('description').text
+			for forced in server.findall('forced'):
+				self[sname]['forced'].append(forced.text)
 			for sparam in server.findall('parameter'):
 				pname = sparam.attrib['name']
 				self[sname]['parameters'][pname] = { \
@@ -67,7 +70,10 @@ class ServerList(dict):
 					'longname' : ruleset.find('longname').text,
 					'version' : ruleset.find('version').text,
 					'description' : ruleset.find('description').text,
+					'forced' : [],
 					'parameters' : {} }
+				for forced in ruleset.findall('forced'):
+					self[sname]['rulesets'][rname]['forced'].append(forced.text)
 				for rparam in ruleset.findall('parameter'):
 					pname = rparam.attrib['name']
 					self[sname]['rulesets'][rname]['parameters'][pname] = { \
@@ -93,9 +99,12 @@ class AIList(dict):
 			if not self.has_key(ainame):
 				self[ainame] = {}
 				self[ainame]['rules'] = []
+				self[ainame]['forced'] = []
 				self[ainame]['parameters'] = {}
 			for rules in aiclient.findall('rules'):
 				self[ainame]['rules'].append(rules.text)
+			for forced in aiclient.findall('forced'):
+				self[ainame]['forced'].append(forced.text)
 			for aiparam in aiclient.findall('parameter'):
 				pname = aiparam.attrib['name']
 				self[ainame]['parameters'][pname] = { \
@@ -117,6 +126,7 @@ class SinglePlayerGame:
 	def __init__(self):
 		#reset active flag
 		self.active = False
+		self.sname = None
 
 		# build a server list
 		self.serverlist = ServerList()
@@ -202,7 +212,10 @@ class SinglePlayerGame:
 
 		try:
 			# start server
+			self.sname = sname
 			servercmd = os.path.join(sharedir, 'servers', sname + '.init') + ' start ' + str(port) + ' ' + rname
+			for forced in self.serverlist[sname]['forced']:
+				servercmd += ' ' + forced
 			for pname in self.serverlist[sname]['parameters'].keys():
 				value = self.serverlist[sname]['parameters'][pname]['default']
 				if sparams.has_key(pname):
@@ -211,6 +224,8 @@ class SinglePlayerGame:
 				if value is None:
 					continue
 				servercmd += ' ' + self.serverlist[sname]['parameters'][pname]['commandstring'] % value
+			for forced in self.serverlist[sname]['rulesets'][rname]['forced']:
+				servercmd += ' ' + forced
 			for pname in self.serverlist[sname]['rulesets'][rname]['parameters'].keys():
 				value = self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['default']
 				if rparams.has_key(pname):
@@ -219,9 +234,9 @@ class SinglePlayerGame:
 				if value is None:
 					continue
 				servercmd += ' ' + self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['commandstring'] % value
+			print servercmd
 			if os.system(servercmd) is not 0:
 				raise InitError, 'Server ' + sname + ' failed to start'
-			self.sname = sname
 
 			# wait for the server to initialize
 			time.sleep(5)
@@ -229,6 +244,8 @@ class SinglePlayerGame:
 			# start AI clients
 			for aiclient in self.opponents:
 				aicmd = os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init') + ' start ' + str(port) + ' ' + rname
+				for forced in self.ailist[aiclient['name']]['forced']:
+					aicmd += ' ' + forced
 				for pname in self.ailist[aiclient['name']]['parameters'].keys():
 					value = self.ailist[aiclient['name']]['parameters'][pname]['default']
 					if aiclient['parameters'].has_key(pname):
@@ -237,6 +254,7 @@ class SinglePlayerGame:
 					if value is None:
 						continue
 					aicmd += ' ' + self.ailist[aiclient['name']]['parameters'][pname]['commandstring'] % value
+				print aicmd
 				if os.system(aicmd) is not 0:
 					raise InitError, 'AI client ' + aiclient['name'] + ' failed to start'
 
@@ -254,10 +272,10 @@ class SinglePlayerGame:
 		Should be called by the client when disconnecting/closing.
 		"""
 		# stop server
-		if self.sname:
+		if self.sname is not None:
 			servercmd = os.path.join(sharedir, 'servers', self.sname + '.init') + ' stop'
 			os.system(servercmd)
-			del self.sname
+			self.sname = None
 
 		# stop AI clients
 		for aiclient in self.opponents:

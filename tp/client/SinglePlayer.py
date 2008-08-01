@@ -45,38 +45,35 @@ class ServerList(dict):
 				self[sname] = {}
 				self[sname]['parameters'] = {}
 				self[sname]['rulesets'] = {}
-			if not self[sname].has_key('longname') and server.find('longname') != None:
+			if not self[sname].has_key('longname') and server.find('longname') is not None:
 				self[sname]['longname'] = server.find('longname').text
-			if not self[sname].has_key('version') and server.find('version') != None:
+			if not self[sname].has_key('version') and server.find('version') is not None:
 				self[sname]['version'] = server.find('version').text
-			if not self[sname].has_key('description') and server.find('description') != None:
+			if not self[sname].has_key('description') and server.find('description') is not None:
 				self[sname]['description'] = server.find('description').text
 			for sparam in server.findall('parameter'):
 				pname = sparam.attrib['name']
 				self[sname]['parameters'][pname] = { \
-					'type' : sparam.attrib['type'], \
-					'longname' : sparam.find('longname').text, \
-					'description' : sparam.find('description').text, \
-					'default' : sparam.find('default').text, \
-					'commandstring' : sparam.find('commandstring').text \
-					}
+					'type' : sparam.attrib['type'],
+					'longname' : sparam.find('longname').text,
+					'description' : sparam.find('description').text,
+					'default' : sparam.find('default').text,
+					'commandstring' : sparam.find('commandstring').text }
 			for ruleset in server.findall('ruleset'):
 				rname = ruleset.attrib['name']
 				self[sname]['rulesets'][rname] = { \
-					'longname' : ruleset.find('longname').text, \
-					'version' : ruleset.find('version').text, \
-					'description' : ruleset.find('description').text, \
-					'parameters' : {} \
-					}
+					'longname' : ruleset.find('longname').text,
+					'version' : ruleset.find('version').text,
+					'description' : ruleset.find('description').text,
+					'parameters' : {} }
 				for rparam in ruleset.findall('parameter'):
 					pname = rparam.attrib['name']
 					self[sname]['rulesets'][rname]['parameters'][pname] = { \
-						'type' : rparam.attrib['type'], \
-						'longname' : rparam.find('longname').text, \
-						'description' : rparam.find('description').text, \
-						'default' : rparam.find('default').text, \
-						'commandstring' : rparam.find('commandstring').text \
-						}
+						'type' : rparam.attrib['type'],
+						'longname' : rparam.find('longname').text,
+						'description' : rparam.find('description').text,
+						'default' : rparam.find('default').text,
+						'commandstring' : rparam.find('commandstring').text }
 
 class AIList(dict):
 	"""\
@@ -100,12 +97,11 @@ class AIList(dict):
 			for aiparam in aiclient.findall('parameter'):
 				pname = aiparam.attrib['name']
 				self[ainame]['parameters'][pname] = { \
-					'type' : aiparam.attrib['type'], \
-					'longname' : aiparam.find('longname').text, \
-					'description' : aiparam.find('description').text, \
-					'default' : aiparam.find('default').text, \
-					'commandstring' : aiparam.find('commandstring').text \
-					}
+					'type' : aiparam.attrib['type'],
+					'longname' : aiparam.find('longname').text,
+					'description' : aiparam.find('description').text,
+					'default' : aiparam.find('default').text,
+					'commandstring' : aiparam.find('commandstring').text }
 
 
 class SinglePlayerGame:
@@ -143,22 +139,20 @@ class SinglePlayerGame:
 		# start server
 		servercmd = os.path.join(sharedir, 'servers', sname + '.init') + ' ' + str(port) + ' ' + rname
 		for pname in self.serverlist[sname]['parameters'].keys():
+			value = self.serverlist[sname]['parameters'][pname]['default']
 			if sparams.has_key(pname):
 				value = sparams[pname]
-			elif self.serverlist[sname]['parameters'][pname]['default'] != None:
-				value = self.serverlist[sname]['parameters'][pname]['default']
-			else:
+			if value is None:
 				continue
 			servercmd += ' ' + self.serverlist[sname]['parameters'][sparam]['commandstring'] % value
 		for pname in self.serverlist[sname]['rulesets'][rname]['parameters'].keys():
+			value = self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['default']
 			if rparams.has_key(pname):
 				value = rparams[pname]
-			elif self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['default'] != None:
-				value = value = self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['default']
-			else:
+			if value is None:
 				continue
 			servercmd += ' ' + self.serverlist[sname]['rulesets'][rname]['parameters'][rparam]['commandstring'] % value
-		if not os.system(servercmd) == 0:
+		if os.system(servercmd) is not 0:
 			return False
 
 		# start AI clients

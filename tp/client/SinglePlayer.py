@@ -180,18 +180,26 @@ class SinglePlayerGame:
 				aiclients.append(ainame)
 		return aiclients
 
-	def add_opponent(self, ainame, aiparams):
+	def add_opponent(self, ainame, aiuser, aiparams):
 		"""\
 		Adds an AI client opponent to the game (before starting).
 
 		Parameters:
 		ainame (string) - the name of the AI client
+		aiuser (string) - the desired username of the opponent
 		aiparams (dict) - parameters {'name', 'value'}
 		"""
+		for aiclient in self.opponents.keys():
+			if self.opponents[aiclient]['user'] is aiuser:
+				return False
+
 		aiclient = { \
 			'name' : ainame,
+			'user' : aiuser.translate(''.join([chr(x) for x in range(256)]),' '),
 			'parameters' : aiparams }
 		self.opponents.append(aiclient)
+
+		return True
 
 	def start(self, sname, sparams, rname, rparams):
 		"""\
@@ -242,7 +250,7 @@ class SinglePlayerGame:
 	
 			# start AI clients
 			for aiclient in self.opponents:
-				aicmd = os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init') + ' start ' + str(port) + ' ' + rname
+				aicmd = os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init') + ' start ' + str(port) + ' ' + rname + ' ' + aiclient['user']
 				for forced in self.ailist[aiclient['name']]['forced']:
 					aicmd += ' ' + forced
 				for pname in self.ailist[aiclient['name']]['parameters'].keys():

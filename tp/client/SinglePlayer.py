@@ -1,5 +1,6 @@
 # Python imports
 import os
+import subprocess
 import time
 import socket
 
@@ -58,30 +59,33 @@ class ServerList(dict):
 				self[sname]['forced'].append(forced.text)
 			for sparam in server.findall('parameter'):
 				pname = sparam.attrib['name']
-				self[sname]['parameters'][pname] = { \
-					'type' : sparam.attrib['type'],
-					'longname' : sparam.find('longname').text,
-					'description' : sparam.find('description').text,
-					'default' : sparam.find('default').text,
-					'commandstring' : sparam.find('commandstring').text }
+				self[sname]['parameters'][pname] = {
+						'type' : sparam.attrib['type'],
+						'longname' : sparam.find('longname').text,
+						'description' : sparam.find('description').text,
+						'default' : sparam.find('default').text,
+						'commandstring' : sparam.find('commandstring').text
+					}
 			for ruleset in server.findall('ruleset'):
 				rname = ruleset.attrib['name']
-				self[sname]['rulesets'][rname] = { \
-					'longname' : ruleset.find('longname').text,
-					'version' : ruleset.find('version').text,
-					'description' : ruleset.find('description').text,
-					'forced' : [],
-					'parameters' : {} }
+				self[sname]['rulesets'][rname] = {
+						'longname' : ruleset.find('longname').text,
+						'version' : ruleset.find('version').text,
+						'description' : ruleset.find('description').text,
+						'forced' : [],
+						'parameters' : {},
+					}
 				for forced in ruleset.findall('forced'):
 					self[sname]['rulesets'][rname]['forced'].append(forced.text)
 				for rparam in ruleset.findall('parameter'):
 					pname = rparam.attrib['name']
-					self[sname]['rulesets'][rname]['parameters'][pname] = { \
-						'type' : rparam.attrib['type'],
-						'longname' : rparam.find('longname').text,
-						'description' : rparam.find('description').text,
-						'default' : rparam.find('default').text,
-						'commandstring' : rparam.find('commandstring').text }
+					self[sname]['rulesets'][rname]['parameters'][pname] = {
+							'type' : rparam.attrib['type'],
+							'longname' : rparam.find('longname').text,
+							'description' : rparam.find('description').text,
+							'default' : rparam.find('default').text,
+							'commandstring' : rparam.find('commandstring').text
+						}
 
 class AIList(dict):
 	"""\
@@ -107,12 +111,13 @@ class AIList(dict):
 				self[ainame]['forced'].append(forced.text)
 			for aiparam in aiclient.findall('parameter'):
 				pname = aiparam.attrib['name']
-				self[ainame]['parameters'][pname] = { \
-					'type' : aiparam.attrib['type'],
-					'longname' : aiparam.find('longname').text,
-					'description' : aiparam.find('description').text,
-					'default' : aiparam.find('default').text,
-					'commandstring' : aiparam.find('commandstring').text }
+				self[ainame]['parameters'][pname] = {
+						'type' : aiparam.attrib['type'],
+						'longname' : aiparam.find('longname').text,
+						'description' : aiparam.find('description').text,
+						'default' : aiparam.find('default').text,
+						'commandstring' : aiparam.find('commandstring').text,
+					}
 
 
 class InitError(Exception):
@@ -149,7 +154,8 @@ class SinglePlayerGame:
 		if self.active:
 			self.stop()
 
-	def list_rulesets(self):
+	@property
+	def rulesets(self):
 		"""\
 		Returns a list of available rulesets from all servers.
 		"""
@@ -189,14 +195,15 @@ class SinglePlayerGame:
 		aiuser (string) - the desired username of the opponent
 		aiparams (dict) - parameters {'name', 'value'}
 		"""
-		for aiclient in self.opponents.keys():
-			if self.opponents[aiclient]['user'] is aiuser:
+		for aiclient in self.opponents:
+			if aiclient['user'] is aiuser:
 				return False
 
-		aiclient = { \
-			'name' : ainame,
-			'user' : aiuser.translate(''.join([chr(x) for x in range(256)]),' '),
-			'parameters' : aiparams }
+		aiclient = {
+				'name' : ainame,
+				'user' : aiuser.translate(''.join([chr(x) for x in range(256)]),' '),
+				'parameters' : aiparams,
+			}
 		self.opponents.append(aiclient)
 
 		return True
@@ -221,38 +228,65 @@ class SinglePlayerGame:
 		try:
 			# start server
 			self.sname = sname
-			servercmd = os.path.join(sharedir, 'servers', sname + '.init') + ' start ' + str(port) + ' ' + rname
-			for forced in self.serverlist[sname]['forced']:
+
+			server = self.serverlist[sname]
+			parameters = server['parameters']
+			ruleset = server['rulesets'][rname]
+
+			# start server - create server command line
+			servercmd = "%s start %s %s" % (os.path.join(sharedir, 'servers', sname + '.init'), rname, port)
+
+			# start server - add forced parameters to command line
+			for forced in server['forced']:
 				servercmd += ' ' + forced
-			for pname in self.serverlist[sname]['parameters'].keys():
-				value = self.serverlist[sname]['parameters'][pname]['default']
+
+			# start server - add regular parameters to command line
+			for pname in parameters.keys():
+				value = parameters[pname]['default']
 				if sparams.has_key(pname):
 					value = sparams[pname]
-				value = self._format_value(value, self.serverlist[sname]['parameters'][pname]['type'])
+				value = self._format_value(value, parameters[pname]['type'])
 				if value is None:
 					continue
-				servercmd += ' ' + self.serverlist[sname]['parameters'][pname]['commandstring'] % value
-			for forced in self.serverlist[sname]['rulesets'][rname]['forced']:
+				servercmd += ' ' + parameters[pname]['commandstring'] % value
+
+			# start server - add forced ruleset parameters to command line
+			for forced in ruleset['forced']:
 				servercmd += ' ' + forced
-			for pname in self.serverlist[sname]['rulesets'][rname]['parameters'].keys():
-				value = self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['default']
+			
+			# start server - add regular ruleset parameters to command line
+			for pname in ruleset['parameters'].keys():
+				value = ruleset['parameters'][pname]['default']
 				if rparams.has_key(pname):
 					value = rparams[pname]
-				value = self._format_value(value, self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['type'])
+				value = self._format_value(value, ruleset['parameters'][pname]['type'])
 				if value is None:
 					continue
-				servercmd += ' ' + self.serverlist[sname]['rulesets'][rname]['parameters'][pname]['commandstring'] % value
-			if os.system(servercmd) is not 0:
+				servercmd += ' ' + ruleset['parameters'][pname]['commandstring'] % value
+
+			# start server - call the control script
+			rc = subprocess.call(servercmd, shell=True)
+			if rc is not 0:
 				raise InitError, 'Server ' + sname + ' failed to start'
 
 			# wait for the server to initialize
+			# FIXME: what is the system is loaded?
 			time.sleep(5)
 	
 			# start AI clients
 			for aiclient in self.opponents:
-				aicmd = os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init') + ' start ' + str(port) + ' ' + rname + ' ' + aiclient['user']
+				aicmd = "%(path)s start %(rname)s %(port)i %(user)s" % {
+							'path': os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init'),
+							'port': port,
+							'rname': rname,
+							'user': aiclient['user'],
+						}
+				
+				# add forced parameters to command line
 				for forced in self.ailist[aiclient['name']]['forced']:
 					aicmd += ' ' + forced
+
+				# add regular parameters to command line
 				for pname in self.ailist[aiclient['name']]['parameters'].keys():
 					value = self.ailist[aiclient['name']]['parameters'][pname]['default']
 					if aiclient['parameters'].has_key(pname):
@@ -261,7 +295,10 @@ class SinglePlayerGame:
 					if value is None:
 						continue
 					aicmd += ' ' + self.ailist[aiclient['name']]['parameters'][pname]['commandstring'] % value
-				if os.system(aicmd) is not 0:
+
+				# call the control script
+				rc = subprocess.call(aicmd, shell=True)
+				if rc is not 0:
 					raise InitError, 'AI client ' + aiclient['name'] + ' failed to start'
 
 			# set active flag

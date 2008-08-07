@@ -148,6 +148,10 @@ class SinglePlayerGame:
 				self.ailist.absorb_xml(xmlfile)
 
 		# prepare internals
+		self.sname = ''
+		self.rname = ''
+		self.sparams = {}
+		self.rparams = {}
 		self.opponents = []
 
 	def __del__(self):
@@ -166,23 +170,23 @@ class SinglePlayerGame:
 					rulesets.append(rname)
 		return rulesets
 
-	def list_servers_with_ruleset(self, rname):
+	def list_servers_with_ruleset(self):
 		"""\
-		Returns a list of servers supporting a given ruleset.
+		Returns a list of servers supporting the game ruleset.
 		"""
 		servers = []
 		for sname in self.serverlist.keys():
-			if self.serverlist[sname]['rulesets'].has_key(rname):
+			if self.serverlist[sname]['rulesets'].has_key(self.rname):
 				servers.append(sname)
 		return servers
 
-	def list_aiclients_with_ruleset(self, rname):
+	def list_aiclients_with_ruleset(self):
 		"""\
-		Returns a list of AI clients supporting a given ruleset.
+		Returns a list of AI clients supporting the game ruleset.
 		"""
 		aiclients = []
 		for ainame in self.ailist.keys():
-			if rname in self.ailist[ainame]['rules']:
+			if self.rname in self.ailist[ainame]['rules']:
 				aiclients.append(ainame)
 		return aiclients
 
@@ -208,16 +212,11 @@ class SinglePlayerGame:
 
 		return True
 
-	def start(self, sname, sparams, rname, rparams):
+	def start(self):
 		"""\
 		Starts the server and AI clients.
-		Returns True if successful (OK to connect).
-
-		Parameters:
-		sname (string) - the name of the server to start
-		sparams (dict) - server parameters {'name', 'value'}
-		rname (string) - the name of the ruleset to use
-		rparams (dict) - ruleset parameters {'name', 'value'}
+		Returns port number if successful (OK to connect).
+		Returns False otherwise.
 		"""
 		# find a free port
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -227,14 +226,12 @@ class SinglePlayerGame:
 
 		try:
 			# start server
-			self.sname = sname
-
-			server = self.serverlist[sname]
+			server = self.serverlist[self.sname]
 			parameters = server['parameters']
-			ruleset = server['rulesets'][rname]
+			ruleset = server['rulesets'][self.rname]
 
 			# start server - create server command line
-			servercmd = "%s start %s %s" % (os.path.join(sharedir, 'servers', sname + '.init'), rname, port)
+			servercmd = "%s start %s %s" % (os.path.join(sharedir, 'servers', self.sname + '.init'), self.rname, port)
 
 			# start server - add forced parameters to command line
 			for forced in server['forced']:
@@ -243,8 +240,8 @@ class SinglePlayerGame:
 			# start server - add regular parameters to command line
 			for pname in parameters.keys():
 				value = parameters[pname]['default']
-				if sparams.has_key(pname):
-					value = sparams[pname]
+				if self.sparams.has_key(pname):
+					value = self.sparams[pname]
 				value = self._format_value(value, parameters[pname]['type'])
 				if value is None:
 					continue
@@ -257,8 +254,8 @@ class SinglePlayerGame:
 			# start server - add regular ruleset parameters to command line
 			for pname in ruleset['parameters'].keys():
 				value = ruleset['parameters'][pname]['default']
-				if rparams.has_key(pname):
-					value = rparams[pname]
+				if self.rparams.has_key(pname):
+					value = self.rparams[pname]
 				value = self._format_value(value, ruleset['parameters'][pname]['type'])
 				if value is None:
 					continue
@@ -306,8 +303,9 @@ class SinglePlayerGame:
 
 		except:
 			self.stop()
+			return False
 
-		return self.active
+		return port
 
 	def stop(self):
 		"""\

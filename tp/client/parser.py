@@ -1,5 +1,5 @@
 
-import pyscheme as scheme
+import schemepy as scheme
 
 def get(list, id):
 	for lid, value in list:
@@ -64,7 +64,7 @@ class DesignCalculator:
 		Calculates all the properties on a design. 
 		Returns the Interpretor and the object with the Properties.
 		"""
-		i = scheme.make_interpreter()
+		vm = scheme.VM(profile="tpcl")
 
 		# Step 1 -------------------------------------
 		ranks = self.rank()
@@ -76,7 +76,7 @@ class DesignCalculator:
 			pass
 
 		properties = Properties()
-		scheme.environment.defineVariable(scheme.symbol.Symbol('design'), properties, i.get_environment())
+		vm.define("design", vm.toscheme(properties))
 
 		# Step 3 -------------------------------------
 		for rank in ranks.keys():
@@ -95,7 +95,7 @@ class DesignCalculator:
 					value = get(component.properties, property_id)
 					if value:
 						print "Now evaluating", value
-						value = i.eval(scheme.parse("""(%s design)""" % value))
+						value = vm.fromscheme(vm.eval(vm.compile("""(%s design)""" % value)))
 
 						print "The value calculated for component %i was %r" % (component_id, value)
 					
@@ -109,21 +109,22 @@ class DesignCalculator:
 				bits_scheme += ")"
 				print "In scheme that is", bits_scheme
 				
-				total = i.eval(scheme.parse("""(let ((bits %s)) (%s design bits))""" % (bits_scheme, property.calculate)))
-				value, display = scheme.pair.car(total), scheme.pair.cdr(total)
+				total = vm.fromscheme(vm.eval(vm.compile("""(let ((bits %s)) (%s design bits))""" % \
+									 (bits_scheme, property.calculate))))
+				value, display = total.car, total.cdr
 
 				print "In total I got '%i' which will be displayed as '%s'" % (value, display)
 				properties[property.name] = (property_id, value, display)
 
 				def t(properties, name=property.name):
 					return properties[name][1]
-				
-				i.install_function('designtype.'+property.name, t)
+
+				vm.define('designtype.'+property.name, vm.toscheme(t))
 				
 		print "The final properties we have are", properties.items()
-		return i, properties
+		return vm, properties
 	
-	def check(self, i, properties):
+	def check(self, vm, properties):
 		"""\
 		check(Interperator, Properties) -> Valid, Feedback
 
@@ -146,11 +147,11 @@ class DesignCalculator:
 			
 				print "Now checking the following requirement"
 				print property.requirements
-				result = i.eval(scheme.parse("""(%s design)""" % property.requirements))
+				result = vm.fromscheme(vm.eval(vm.compile("""(%s design)""" % property.requirements)))
 				print "Result was:", result
-				okay, feedback = scheme.pair.car(result), scheme.pair.cdr(result)
+				okay, feedback = result.car, result.cdr
 
-				if okay != scheme.symbol.Symbol('#t'):
+				if okay is not True:
 					total_okay = False
 		
 				if feedback != "":
@@ -165,11 +166,11 @@ class DesignCalculator:
 			
 			print "Now checking the following requirement"
 			print component.requirements
-			result = i.eval(scheme.parse("""(%s design)""" % component.requirements))
+			result = vm.fromscheme(vm.eval(vm.compile("""(%s design)""" % component.requirements)))
 			print "Result was:", result
-			okay, feedback = scheme.pair.car(result), scheme.pair.cdr(result)
+			okay, feedback = result.car, result.cdr
 
-			if okay != scheme.symbol.Symbol('#t'):
+			if okay is not True:
 				total_okay = False
 		
 			if feedback != "":
@@ -189,6 +190,6 @@ class DesignCalculator:
 
 	def update(self):
 		if self.__dirty:
-			i, p = self.calculate()
-			okay, reason = self.check(i, p)
+			vm, p = self.calculate()
+			okay, reason = self.check(vm, p)
 			self.apply(p, okay, reason)

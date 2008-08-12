@@ -244,7 +244,6 @@ class SinglePlayerGame:
 		try:
 			# start server
 			server = self.serverlist[self.sname]
-			parameters = server['parameters']
 			ruleset = server['rulesets'][self.rname]
 
 			# start server - create server command line
@@ -255,14 +254,14 @@ class SinglePlayerGame:
 				servercmd += ' ' + forced
 
 			# start server - add regular parameters to command line
-			for pname in parameters.keys():
-				value = parameters[pname]['default']
+			for pname in server['parameters'].keys():
+				value = server['parameters'][pname]['default']
 				if self.sparams.has_key(pname):
 					value = self.sparams[pname]
-				value = self._format_value(value, parameters[pname]['type'])
+				value = self._format_value(value, server['parameters'][pname]['type'])
 				if value is None:
 					continue
-				servercmd += ' ' + parameters[pname]['commandstring'] % value
+				servercmd += ' ' + server['parameters'][pname]['commandstring'] % value
 
 			# start server - add forced ruleset parameters to command line
 			for forced in ruleset['forced']:
@@ -347,13 +346,13 @@ class SinglePlayerGame:
 		"""\
 		Internal: formats a parameter value based on type.
 		"""
-		if value is None:
+		if value is None or str(value) == '':
 			return None
-		elif type is 'I':
+		elif type == 'I':
 			return int(value)
-		elif type is 'S':
-			return str(value)
-		elif type is 'B':
+		elif type == 'S':
+			 return str(value)
+		elif type == 'B':
 			return ''
 		else:
 			return None

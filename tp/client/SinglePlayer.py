@@ -195,6 +195,18 @@ class SinglePlayerGame:
 				aiclients.append(ainame)
 		return aiclients
 
+	def list_sparams(self):
+		"""\
+		Returns the parameter list for the current server.
+		"""
+		return self.serverlist[self.sname]['parameters']
+
+	def list_rparams(self):
+		"""\
+		Returns the parameter list for the current server.
+		"""
+		return self.serverlist[self.sname]['rulesets'][self.rname]['parameters']
+
 	def add_opponent(self, ainame, aiuser, aiparams):
 		"""\
 		Adds an AI client opponent to the game (before starting).

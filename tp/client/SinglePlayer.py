@@ -102,6 +102,9 @@ class AIList(dict):
 			ainame = aiclient.attrib['name']
 			if not self.has_key(ainame):
 				self[ainame] = {}
+				self[ainame]['longname'] = aiclient.find('longname').text
+				self[ainame]['version'] = aiclient.find('version').text
+				self[ainame]['description'] = aiclient.find('description').text
 				self[ainame]['rules'] = []
 				self[ainame]['forced'] = []
 				self[ainame]['parameters'] = {}

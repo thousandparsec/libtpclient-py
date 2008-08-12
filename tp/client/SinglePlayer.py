@@ -170,6 +170,11 @@ class SinglePlayerGame:
 					rulesets.append(rname)
 		return rulesets
 
+	def ruleset_info(self, rname):
+		for sname in self.serverlist.keys():
+			if self.serverlist[sname]['rulesets'].has_key(rname):
+				return self.serverlist[sname]['rulesets'][rname]
+
 	def list_servers_with_ruleset(self):
 		"""\
 		Returns a list of servers supporting the game ruleset.

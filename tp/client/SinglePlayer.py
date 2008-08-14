@@ -27,8 +27,8 @@ if ET is None:
     raise ImportError(str(errors))
 
 
-# TODO: do this properly
-sharedir = '/usr/share/tp'
+# where to look for XML definitions and control scripts
+sharepath = ['/usr/share/tp', '/usr/local/share/tp', '/opt/tp']
 
 
 class ServerList(dict):
@@ -136,21 +136,21 @@ class SinglePlayerGame:
 		self.active = False
 		self.sname = None
 
-		# build a server list
+		# build server and AI client lists
 		self.serverlist = ServerList()
-		for xmlfile in os.listdir(os.path.join(sharedir, 'servers')):
-			xmlfile = os.path.join(sharedir, 'servers', xmlfile)
-			if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
-				self.serverlist.absorb_xml(xmlfile)
-
-		# build an AI client list
 		self.ailist = AIList()
-		for xmlfile in os.listdir(os.path.join(sharedir, 'aiclients')):
-			xmlfile = os.path.join(sharedir, 'aiclients', xmlfile)
-			if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
-				self.ailist.absorb_xml(xmlfile)
+		for sharedir in sharepath:
+			if os.path.isdir(sharedir):
+				for xmlfile in os.listdir(os.path.join(sharedir, 'servers')):
+					xmlfile = os.path.join(sharedir, 'servers', xmlfile)
+					if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
+						self.serverlist.absorb_xml(xmlfile)
+				for xmlfile in os.listdir(os.path.join(sharedir, 'aiclients')):
+					xmlfile = os.path.join(sharedir, 'aiclients', xmlfile)
+					if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
+						self.ailist.absorb_xml(xmlfile)
 
-		# prepare internals
+		# initialize internals
 		self.sname = ''
 		self.rname = ''
 		self.sparams = {}
@@ -173,42 +173,54 @@ class SinglePlayerGame:
 					rulesets.append(rname)
 		return rulesets
 
-	def ruleset_info(self, rname):
+	def ruleset_info(self, rname = None):
+		if rname is None:
+			rname = self.rname
 		for sname in self.serverlist.keys():
 			if self.serverlist[sname]['rulesets'].has_key(rname):
 				return self.serverlist[sname]['rulesets'][rname]
 
-	def list_servers_with_ruleset(self):
+	def list_servers_with_ruleset(self, rname = None):
 		"""\
-		Returns a list of servers supporting the game ruleset.
+		Returns a list of servers supporting the current or specified ruleset.
 		"""
+		if rname is None:
+			rname = self.rname
 		servers = []
 		for sname in self.serverlist.keys():
-			if self.serverlist[sname]['rulesets'].has_key(self.rname):
+			if self.serverlist[sname]['rulesets'].has_key(rname):
 				servers.append(sname)
 		return servers
 
-	def list_aiclients_with_ruleset(self):
+	def list_aiclients_with_ruleset(self, rname = None):
 		"""\
-		Returns a list of AI clients supporting the game ruleset.
+		Returns a list of AI clients supporting the current or specified ruleset.
 		"""
+		if rname is None:
+			rname = self.rname
 		aiclients = []
 		for ainame in self.ailist.keys():
-			if self.rname in self.ailist[ainame]['rules']:
+			if rname in self.ailist[ainame]['rules']:
 				aiclients.append(ainame)
 		return aiclients
 
-	def list_sparams(self):
+	def list_sparams(self, sname = None):
 		"""\
-		Returns the parameter list for the current server.
+		Returns the parameter list for the current or specified server.
 		"""
-		return self.serverlist[self.sname]['parameters']
+		if sname is None:
+			sname = self.sname
+		return self.serverlist[sname]['parameters']
 
-	def list_rparams(self):
+	def list_rparams(self, sname = None, rname = None):
 		"""\
-		Returns the parameter list for the current server.
+		Returns the parameter list for the current or specified ruleset.
 		"""
-		return self.serverlist[self.sname]['rulesets'][self.rname]['parameters']
+		if sname is None:
+			sname = self.sname
+		if rname is None:
+			rname = self.rname
+		return self.serverlist[sname]['rulesets'][rname]['parameters']
 
 	def add_opponent(self, ainame, aiuser, aiparams):
 		"""\

@@ -175,10 +175,16 @@ class SinglePlayerGame:
 
 	def ruleset_info(self, rname = None):
 		if rname is None:
+			sname = self.sname
 			rname = self.rname
-		for sname in self.serverlist.keys():
-			if self.serverlist[sname]['rulesets'].has_key(rname):
-				return self.serverlist[sname]['rulesets'][rname]
+		else:
+			for sname in self.serverlist.keys():
+				if self.serverlist[sname]['rulesets'].has_key(rname):
+					break
+		try:
+			return self.serverlist[sname]['rulesets'][rname]
+		except KeyError:
+			return None
 
 	def list_servers_with_ruleset(self, rname = None):
 		"""\

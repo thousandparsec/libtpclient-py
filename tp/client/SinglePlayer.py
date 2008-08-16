@@ -40,6 +40,8 @@ class ServerList(dict):
 	def absorb_xml(self, xmlfile):
 		"""\
 		Import an XML file describing a server or server component.
+
+		@param xmlfile The XML file to import.
 		"""
 		xmltree = ET.parse(xmlfile)
 		for server in xmltree.findall('server'):
@@ -96,6 +98,8 @@ class AIList(dict):
 	def absorb_xml(self, xmlfile):
 		"""\
 		Import an XML file describing a server or server component.
+
+		@param xmlfile The XML file to import.
 		"""
 		xmltree = ET.parse(xmlfile)
 		for aiclient in xmltree.findall('aiclient'):
@@ -165,6 +169,8 @@ class SinglePlayerGame:
 	def rulesets(self):
 		"""\
 		Returns a list of available rulesets from all servers.
+
+		@return A list of rulesets.
 		"""
 		rulesets = []
 		for sname in self.serverlist.keys():
@@ -174,6 +180,12 @@ class SinglePlayerGame:
 		return rulesets
 
 	def ruleset_info(self, rname = None):
+		"""\
+		Returns information about a ruleset.
+
+		@param rname Ruleset name (optional).
+		@return Current or first found by name ruleset information,
+		"""
 		if rname is None:
 			sname = self.sname
 			rname = self.rname
@@ -189,6 +201,9 @@ class SinglePlayerGame:
 	def list_servers_with_ruleset(self, rname = None):
 		"""\
 		Returns a list of servers supporting the current or specified ruleset.
+
+		@param rname Ruleset name (optional).
+		@return A list of servers.
 		"""
 		if rname is None:
 			rname = self.rname
@@ -201,6 +216,9 @@ class SinglePlayerGame:
 	def list_aiclients_with_ruleset(self, rname = None):
 		"""\
 		Returns a list of AI clients supporting the current or specified ruleset.
+
+		@param rname Ruleset name (optional).
+		@return A list of AI clients.
 		"""
 		if rname is None:
 			rname = self.rname
@@ -213,6 +231,9 @@ class SinglePlayerGame:
 	def list_sparams(self, sname = None):
 		"""\
 		Returns the parameter list for the current or specified server.
+
+		@param sname Server name (optional).
+		@return The server parameter list.
 		"""
 		if sname is None:
 			sname = self.sname
@@ -221,6 +242,9 @@ class SinglePlayerGame:
 	def list_rparams(self, sname = None, rname = None):
 		"""\
 		Returns the parameter list for the current or specified ruleset.
+
+		@param rname Ruleset name (optional).
+		@return The ruleset parameter list.
 		"""
 		if sname is None:
 			sname = self.sname
@@ -232,10 +256,9 @@ class SinglePlayerGame:
 		"""\
 		Adds an AI client opponent to the game (before starting).
 
-		Parameters:
-		ainame (string) - the name of the AI client
-		aiuser (string) - the desired username of the opponent
-		aiparams (dict) - parameters {'name', 'value'}
+		@param ainame The name of the AI client.
+		@param aiuser The desired username of the opponent.
+		@param aiparams A dictionary of parameters in the form {'name', 'value'}.
 		"""
 		for aiclient in self.opponents:
 			if aiclient['user'] is aiuser:
@@ -253,8 +276,8 @@ class SinglePlayerGame:
 	def start(self):
 		"""\
 		Starts the server and AI clients.
-		Returns port number if successful (OK to connect).
-		Returns False otherwise.
+
+		@return Port number (OK to connect) or False.
 		"""
 		# find a free port
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -387,6 +410,10 @@ class SinglePlayerGame:
 	def _format_value(self, value, type):
 		"""\
 		Internal: formats a parameter value based on type.
+
+		@oaram value The value to format.
+		@param type The target value type (I, S, or B).
+		@return The formatted value or None.
 		"""
 		if value is None or str(value) == '':
 			return None

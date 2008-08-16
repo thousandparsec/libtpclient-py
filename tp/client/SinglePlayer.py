@@ -344,7 +344,7 @@ class SinglePlayerGame:
 						aicmd = "%(path)s start %(rname)s %(port)i %(user)s" % {
 									'path': os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init'),
 									'port': port,
-									'rname': rname,
+									'rname': self.rname,
 									'user': aiclient['user'],
 								}
 						break
@@ -373,7 +373,8 @@ class SinglePlayerGame:
 			# set active flag
 			self.active = True
 
-		except:
+		except InitError, e:
+			print e
 			self.stop()
 			return False
 

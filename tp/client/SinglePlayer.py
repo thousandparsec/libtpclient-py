@@ -136,10 +136,6 @@ class SinglePlayerGame:
 	"""
 
 	def __init__(self):
-		#reset active flag
-		self.active = False
-		self.sname = None
-
 		# build server and AI client lists
 		self.serverlist = ServerList()
 		self.ailist = AIList()
@@ -155,6 +151,7 @@ class SinglePlayerGame:
 						self.ailist.absorb_xml(xmlfile)
 
 		# initialize internals
+		self.active = False
 		self.sname = ''
 		self.rname = ''
 		self.sparams = {}
@@ -279,6 +276,9 @@ class SinglePlayerGame:
 
 		@return Port number (OK to connect) or False.
 		"""
+		if self.active:
+			return
+
 		# find a free port
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		s.bind(('localhost',0))
@@ -385,8 +385,11 @@ class SinglePlayerGame:
 		Stops the server and AI clients.
 		Should be called by the client when disconnecting/closing.
 		"""
+		if not self.active:
+			return
+
 		# stop server
-		if self.sname is not None:
+		if self.sname != '':
 			servercmd = ''
 			for sharedir in sharepath:
 				if os.path.isdir(sharedir) and os.path.isfile(os.path.join(sharedir, 'servers', self.sname + '.init')):
@@ -394,7 +397,8 @@ class SinglePlayerGame:
 					break
 			if servercmd != '':
 				os.system(servercmd)
-			self.sname = None
+			self.sname = ''
+			self.rname = ''
 
 		# stop AI clients
 		for aiclient in self.opponents:
@@ -404,6 +408,7 @@ class SinglePlayerGame:
 					aicmd = os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init') + ' stop'
 			if aicmd != '':
 				os.system(aicmd)
+		self.opponents = []
 
 		# reset active flag
 		self.active = False

@@ -268,7 +268,13 @@ class SinglePlayerGame:
 			ruleset = server['rulesets'][self.rname]
 
 			# start server - create server command line
-			servercmd = "%s start %s %s" % (os.path.join(sharedir, 'servers', self.sname + '.init'), self.rname, port)
+			servercmd = ''
+			for sharedir in sharepath:
+				if os.path.isdir(sharedir) and os.path.isfile(os.path.join(sharedir, 'servers', self.sname + '.init')):
+					servercmd = "%s start %s %s" % (os.path.join(sharedir, 'servers', self.sname + '.init'), self.rname, port)
+					break
+			if servercmd == '':
+				raise InitError, 'Server control script for ' + self.sname + ' not found'
 
 			# start server - add forced parameters to command line
 			for forced in server['forced']:
@@ -309,12 +315,18 @@ class SinglePlayerGame:
 	
 			# start AI clients
 			for aiclient in self.opponents:
-				aicmd = "%(path)s start %(rname)s %(port)i %(user)s" % {
-							'path': os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init'),
-							'port': port,
-							'rname': rname,
-							'user': aiclient['user'],
-						}
+				aicmd = ''
+				for sharedir in sharepath:
+					if os.path.isdir(sharedir) and os.path.isfile(os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init')):
+						aicmd = "%(path)s start %(rname)s %(port)i %(user)s" % {
+									'path': os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init'),
+									'port': port,
+									'rname': rname,
+									'user': aiclient['user'],
+								}
+						break
+				if aicmd == '':
+					raise InitError, 'AI client control script for ' + aiclient['name'] + ' not found'
 				
 				# add forced parameters to command line
 				for forced in self.ailist[aiclient['name']]['forced']:
@@ -351,14 +363,23 @@ class SinglePlayerGame:
 		"""
 		# stop server
 		if self.sname is not None:
-			servercmd = os.path.join(sharedir, 'servers', self.sname + '.init') + ' stop'
-			os.system(servercmd)
+			servercmd = ''
+			for sharedir in sharepath:
+				if os.path.isdir(sharedir) and os.path.isfile(os.path.join(sharedir, 'servers', self.sname + '.init')):
+					servercmd = os.path.join(sharedir, 'servers', self.sname + '.init') + ' stop'
+					break
+			if servercmd != '':
+				os.system(servercmd)
 			self.sname = None
 
 		# stop AI clients
 		for aiclient in self.opponents:
-			aicmd = os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init') + ' stop'
-			os.system(aicmd)
+			aicmd = ''
+			for sharedir in sharepath:
+				if os.path.isdir(sharedir) and os.path.isfile(os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init')):
+					aicmd = os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init') + ' stop'
+			if aicmd != '':
+				os.system(aicmd)
 
 		# reset active flag
 		self.active = False

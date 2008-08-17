@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Single-player control script for daneel-ai
+# Copyright 2008 Aaron Mavrinac and the Thousand Parsec Project
+# Distributed under the terms of the GNU General Public License v2
+
+TPPATH="/home/aaron/tp/git/daneel-ai"
+TPBIN="daneel-ai"
+TPCMD=$1
+TPNAME=`basename $0 .init`
+
+function startfunc {
+	echo "Starting $TPNAME ($TPUSER)..."
+
+	$TPPATH/$TPBIN \
+		-f $TPPATH/rules-$TPGAME \
+		-u tp://$TPUSER:password@localhost:$TPPORT &
+
+	#TODO: verify running by pid
+	echo "OK."
+}
+
+function stopfunc {
+	echo "Stopping $TPNAME..."
+
+	#TODO: kill by pid
+	killall daneel-ai
+}
+
+if [ $TPCMD = "start" ]; then
+	TPGAME=$2
+	TPPORT=$3
+	TPUSER=$4
+	startfunc
+elif [ $TPCMD = "stop" ]; then
+	stopfunc
+else
+	echo "$0: error: unknown command"
+fi
+
+exit 0

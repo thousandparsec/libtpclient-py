@@ -26,9 +26,11 @@ except ImportError, e:
 if ET is None:
     raise ImportError(str(errors))
 
+# local imports
+from version import installpath
 
 # where to look for XML definitions and control scripts
-sharepath = ['/usr/share/tp', '/usr/local/share/tp', '/opt/tp']
+sharepath = ['/usr/share/tp', '/usr/local/share/tp', '/opt/tp', os.path.join(installpath, 'tp/client/singleplayer')]
 
 
 class ServerList(dict):

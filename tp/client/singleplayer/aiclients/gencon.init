@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Single-player control script for FakeAI
+# Copyright 2008 Aaron Mavrinac and the Thousand Parsec Project
+# Distributed under the terms of the GNU General Public License v2
+
+TPBIN="/path/to/GenConRunner"
+TPCMD=$1
+TPNAME=`basename $0 .init`
+
+function startfunc {
+	echo "Starting $TPNAME ($TPUSER)..."
+
+	java $TPBIN \
+		$TPGAME \
+		tp://$TPUSER:password@localhost:$TPPORT \
+		$TPARGS \
+		n &
+
+	#TODO: verify running by pid
+	echo "OK."
+}
+
+function stopfunc {
+	echo "Stopping $TPNAME..."
+
+	#TODO: kill by pid
+	killall GenConRunner
+}
+
+if [ $TPCMD = "start" ]; then
+	TPGAME=$2
+	TPPORT=$3
+	TPUSER=$4
+	TPARGS=`echo $@ | cut -f5- -d' '`
+	startfunc
+elif [ $TPCMD = "stop" ]; then
+	stopfunc
+else
+	echo "$0: error: unknown command"
+fi
+
+exit 0

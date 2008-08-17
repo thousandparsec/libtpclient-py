@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<!DOCTYPE tpconfig SYSTEM "../tpconfig.dtd">
+<tpconfig>
+	<aiclient name="daneel-ai">
+		<longname>daneel-ai</longname>
+		<version>0</version>
+		<description>An advanced rule based AI.</description>
+		<rules>risk</rules>
+		<rules>rfts</rules>
+	</aiclient>
+</tpconfig>

@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# Single-player control script for <server>
+# Copyright 2008 Aaron Mavrinac and the Thousand Parsec Project
+# Distributed under the terms of the GNU General Public License v2
+
+# This is an example control script for a server. Usage must be as follows:
+# 	./<server>-<version>.init start <ruleset> <port> [arguments]
+#	./<server>-<version>.init stop
+
+TPBIN="/path/to/server"  # Replace with <server> binary path.
+TPCMD=$1
+TPNAME=`basename $0 .init`
+
+function startfunc {
+	echo "Starting $TPNAME..."
+
+	# Start <server> here. Example code provided below.
+
+	$TPBIN \
+		--ruleset-arg $TPGAME \
+		--port-arg $TPPORT \
+		# default parameters here \
+		$TPARGS &
+
+	# Return 0 if successful, 1 otherwise. Example code provided below.
+	
+	if ps ax | grep -v grep | grep $TPBIN > /dev/null; then
+		echo "OK."
+	else
+		echo "$0: error: unable to start $TPNAME"
+		exit 1
+	fi
+}
+
+function stopfunc {
+	echo "Stopping $TPNAME..."
+
+	# Kill <server> here. Example code provided below.
+
+	killall $TPBIN
+}
+
+if [ $TPCMD = "start" ]; then
+	TPGAME=$2
+	TPPORT=$3
+	TPARGS=`echo $@ | cut -f4- -d' '`
+	startfunc
+elif [ $TPCMD = "stop" ]; then
+	stopfunc
+else
+	echo "$0: error: unknown command"
+fi
+
+exit 0

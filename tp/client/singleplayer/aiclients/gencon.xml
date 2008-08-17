@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!DOCTYPE tpconfig SYSTEM "../tpconfig.dtd">
+<tpconfig>
+	<aiclient name="gencon">
+		<longname>GenCon</longname>
+		<version>0</version>
+		<description>An AI based around a genetic algorithm.</description>
+		<rules>risk</rules>
+		<rules>rfts</rules>
+		<parameter name="difficulty" type="I">
+			<longname>Difficulty</longname>
+			<description>Difficulty level (1 - 9).</description>
+			<default>8</default>
+			<commandstring>%d</commandstring>
+		</parameter>
+	</aiclient>
+</tpconfig>

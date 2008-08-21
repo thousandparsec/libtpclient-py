@@ -275,6 +275,18 @@ class NetworkThread(CallThread):
 		"""
 		pass
 
+	class NetworkFailureUserEvent(NetworkFailureEvent):
+		"""\
+		Raised when there was a network failure because the user does not exist.
+		"""
+		pass
+
+	class NetworkFailurePasswordEvent(NetworkFailureEvent):
+		"""\
+		Raised when there was a network failure because the password was incorrect.
+		"""
+		pass
+
 	class NetworkConnectEvent(Event):
 		"""\
 		Raised when the network connects to a server.
@@ -332,6 +344,7 @@ class NetworkThread(CallThread):
 				self.application.Post(self.NetworkTimeRemainingEvent(frame))
 		except (AttributeError, KeyError), e:
 			print e
+
 
 	def error(self, error):
 		traceback.print_exc()
@@ -408,7 +421,7 @@ class NetworkThread(CallThread):
 			if failed(self.connection.login(username, password)):
 				s  = _("The client connected to the host but could not login because the username of password was incorrect.\n")
 				s += _("This could be because you are connecting to the wrong server or mistyped the username or password.\n")
-				self.application.Post(self.NetworkFailureEvent(s))
+				self.application.Post(self.NetworkFailureUserEvent(s))
 				return False
 			callback("connecting", "downloaded", _("Logged in okay!"), amount=1)
 

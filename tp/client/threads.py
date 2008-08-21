@@ -291,7 +291,10 @@ class NetworkThread(CallThread):
 		"""\
 		Raised when the network connects to a server.
 		"""
-		pass
+		def __init__(self, msg, features, games):
+			Event.__init__(self, msg)
+			self.features = features
+			self.games    = games
 
 	class NetworkAccountEvent(Event):
 		"""\
@@ -404,7 +407,17 @@ class NetworkThread(CallThread):
 			return False
 		callback("connecting", "downloaded", _("Got the supported features..."), amount=1)
 
-		self.application.Post(self.NetworkConnectEvent(features))
+		callback("connecting", "progress", _("Looking for running games..."))
+		games = self.connection.games()
+		if failed(games):
+			games = []
+		else:
+			for game in games:
+				callback("connecting", "progress", _("Found %s playing %s (%s)") % (game.name, game.rule, game.rulever))
+
+		callback("connecting", "downloaded", _("Got the supported features..."), amount=1)
+
+		self.application.Post(self.NetworkConnectEvent("Connected to %s" % host, features, games))
 		return 
 
 	def ConnectTo(self, host, username, password, debug=False, callback=nop, cs="unknown"):

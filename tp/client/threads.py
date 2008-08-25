@@ -275,11 +275,26 @@ class NetworkThread(CallThread):
 		"""
 		pass
 
+	class NetworkFailureUserEvent(NetworkFailureEvent):
+		"""\
+		Raised when there was a network failure because the user does not exist.
+		"""
+		pass
+
+	class NetworkFailurePasswordEvent(NetworkFailureEvent):
+		"""\
+		Raised when there was a network failure because the password was incorrect.
+		"""
+		pass
+
 	class NetworkConnectEvent(Event):
 		"""\
 		Raised when the network connects to a server.
 		"""
-		pass
+		def __init__(self, msg, features, games):
+			Event.__init__(self, msg)
+			self.features = features
+			self.games    = games
 
 	class NetworkAccountEvent(Event):
 		"""\
@@ -332,6 +347,7 @@ class NetworkThread(CallThread):
 				self.application.Post(self.NetworkTimeRemainingEvent(frame))
 		except (AttributeError, KeyError), e:
 			print e
+
 
 	def error(self, error):
 		traceback.print_exc()
@@ -391,7 +407,17 @@ class NetworkThread(CallThread):
 			return False
 		callback("connecting", "downloaded", _("Got the supported features..."), amount=1)
 
-		self.application.Post(self.NetworkConnectEvent(features))
+		callback("connecting", "progress", _("Looking for running games..."))
+		games = self.connection.games()
+		if failed(games):
+			games = []
+		else:
+			for game in games:
+				callback("connecting", "progress", _("Found %s playing %s (%s)") % (game.name, game.rule, game.rulever))
+
+		callback("connecting", "downloaded", _("Got the supported features..."), amount=1)
+
+		self.application.Post(self.NetworkConnectEvent("Connected to %s" % host, features, games))
 		return 
 
 	def ConnectTo(self, host, username, password, debug=False, callback=nop, cs="unknown"):
@@ -408,7 +434,7 @@ class NetworkThread(CallThread):
 			if failed(self.connection.login(username, password)):
 				s  = _("The client connected to the host but could not login because the username of password was incorrect.\n")
 				s += _("This could be because you are connecting to the wrong server or mistyped the username or password.\n")
-				self.application.Post(self.NetworkFailureEvent(s))
+				self.application.Post(self.NetworkFailureUserEvent(s))
 				return False
 			callback("connecting", "downloaded", _("Logged in okay!"), amount=1)
 

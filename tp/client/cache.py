@@ -39,6 +39,7 @@ from ChangeList import ChangeList, ChangeNode
 from threads import Event
 from threadcheck import thread_checker, thread_safe
 
+__CACHE = None
 class Cache(object):
 	"""\
 	This is the a cache of the data downloaded from the network. 
@@ -540,11 +541,14 @@ class Cache(object):
 		ids = []
 		for id, time in getattr(connection, "get_%s_ids" % sn)(iter=True):
 			ids.append(id)
-			if not cache().has_key(id) or time > cache().times[id]:
+			if not cache().has_key(id):
+				c(pn, "info", message=_("%s: Getting %s as not cache().has_key(id)") % (pn, id))
 				toget.append(id)
-			# FIXME: This doesn't work if an thing disappears...
-			#elif constants.FEATURE_ORDERED_OBJECT in self.features:
-			#	break
+			elif time > cache().times[id]:
+				c(pn, "info", message=_("%s: Getting %s (%s) as %s > %s") % (pn, id, cache(id).name, time, cache().times[id]))
+				toget.append(id)
+			else:
+				c(pn, "info", message=_("%s: Not getting %s (%s) as %s > %s") % (pn, id, cache(id).name, time, cache().times[id]))
 
 		# Callback function
 		def OnPacket(p, c=c, pn=pn, sn=sn, objects=objects):
@@ -567,6 +571,12 @@ class Cache(object):
 		# Match the results to the associated ids
 		for id, frame in zip(toget, frames):
 			if not failed(frame):
+				if cache().has_key(id):
+					c(pn, "info", \
+						message=_("%s: Updating %s (%s - %s) with modtime %s") % (pn, id, cache(id).name, frame.name, frame.modify_time))
+				else:
+					c(pn, "info", \
+						message=_("%s: Updating %s (%s - New!) with modtime %s") % (pn, id, frame.name, frame.modify_time))
 				cache()[id] = (frame.modify_time, frame)
 			else:
 				if cache().has_key(id):

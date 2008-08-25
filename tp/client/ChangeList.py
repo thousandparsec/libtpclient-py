@@ -109,6 +109,15 @@ class ChangeNode(object):
 		return "<Node(%x)-%r <%s %s>>" % (self.id, self._what, l, r)
 	__str__ = __repr__
 
+	def __eq__(self, other):
+		try:
+			return self._what is other._what
+		except AttributeError:
+			return False
+
+	def __neq__(self, other):
+		return not self.__eq__(other)
+
 	@property
 	def pending(self):
 		assert False
@@ -229,6 +238,13 @@ class ChangeList(object):
 		while node.right != None:
 			node = node.right
 		self.insert_after(node, toappend)
+
+	def find(self, what):
+		node = self.head
+		while node.right != None:
+			if node._what is what:
+				return node
+			node = node.right
 
 	@property
 	def first(self):

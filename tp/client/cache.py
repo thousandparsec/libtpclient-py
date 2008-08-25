@@ -384,7 +384,7 @@ class Cache(object):
 				node._what.__class__ = DynamicBaseOrder
 				node._what.subtype = subtype
 
-		pickle.dump(p, f)
+		#pickle.dump(p, f)
 
 		# FIXME: The above copy should not be mutating!
 		for clist in p['orders'].values():

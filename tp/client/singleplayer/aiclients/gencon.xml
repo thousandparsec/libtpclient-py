@@ -5,13 +5,14 @@
 		<longname>GenCon</longname>
 		<version>0</version>
 		<description>An AI based around a genetic algorithm.</description>
+		<commandstring>java GenConRunner %s tp://%s:password@localhost:%d</commandstring>
 		<rules>risk</rules>
 		<rules>rfts</rules>
 		<parameter name="difficulty" type="I">
 			<longname>Difficulty</longname>
 			<description>Difficulty level (1 - 9).</description>
 			<default>8</default>
-			<commandstring>%d</commandstring>
+			<commandstring>%d n</commandstring>
 		</parameter>
 	</aiclient>
 </tpconfig>

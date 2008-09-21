@@ -5,7 +5,7 @@
 		<longname>daneel-ai</longname>
 		<version>0</version>
 		<description>An advanced rule based AI.</description>
-		<commandstring>daneel-ai -f rules-%s -u tp://%s:password@localhost:%d</commandstring>
+		<commandstring>daneel-ai -f rules-%(rname)s -u tp://%(user)s:password@localhost:%(port)d</commandstring>
 		<rules>risk</rules>
 		<rules>rfts</rules>
 	</aiclient>

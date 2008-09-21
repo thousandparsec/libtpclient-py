@@ -5,7 +5,7 @@
 		<longname>GenCon</longname>
 		<version>0</version>
 		<description>An AI based around a genetic algorithm.</description>
-		<commandstring>java GenConRunner %s tp://%s:password@localhost:%d</commandstring>
+		<commandstring>java GenConRunner %(rname)s tp://%(user)s:password@localhost:%(port)d</commandstring>
 		<rules>risk</rules>
 		<rules>rfts</rules>
 		<parameter name="difficulty" type="I">

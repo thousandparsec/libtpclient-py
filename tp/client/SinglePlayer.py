@@ -1,8 +1,8 @@
 # Python imports
 import os
-import subprocess
 import time
 import socket
+from killableprocess import Popen
 
 # find an elementtree implementation
 ET = None
@@ -296,13 +296,10 @@ class SinglePlayerGame:
 			ruleset = server['rulesets'][self.rname]
 
 			# start server - create server command line
-			servercmd = ''
-			for sharedir in sharepath:
-				if os.path.isdir(sharedir) and os.path.isfile(os.path.join(sharedir, 'servers', self.sname + '.init')):
-					servercmd = "%s start %s %s" % (os.path.join(sharedir, 'servers', self.sname + '.init'), self.rname, port)
-					break
-			if servercmd == '':
-				raise InitError, 'Server control script for ' + self.sname + ' not found'
+			servercmd = server['commandstring'] % {
+						'rname': self.rname,
+						'port': port,
+					}
 
 			# start server - add forced parameters to command line
 			for forced in server['forced']:
@@ -333,9 +330,8 @@ class SinglePlayerGame:
 				servercmd += ' ' + ruleset['parameters'][pname]['commandstring'] % value
 
 			# start server - call the control script
-			rc = subprocess.call(servercmd, shell=True)
-			if rc is not 0:
-				raise InitError, 'Server ' + sname + ' failed to start'
+			# TODO: redirect stdout and stderr to null
+			self.sproc = Popen(servercmd, shell=True)
 
 			# wait for the server to initialize
 			# FIXME: use admin protocol if available to check this (loop)
@@ -343,18 +339,11 @@ class SinglePlayerGame:
 	
 			# start AI clients
 			for aiclient in self.opponents:
-				aicmd = ''
-				for sharedir in sharepath:
-					if os.path.isdir(sharedir) and os.path.isfile(os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init')):
-						aicmd = "%(path)s start %(rname)s %(port)i %(user)s" % {
-									'path': os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init'),
-									'port': port,
-									'rname': self.rname,
-									'user': aiclient['user'],
-								}
-						break
-				if aicmd == '':
-					raise InitError, 'AI client control script for ' + aiclient['name'] + ' not found'
+				aicmd = self.ailist[aiclient['name']]['commandstring'] % {
+							'port': port,
+							'rname': self.rname,
+							'user': aiclient['user'],
+						}
 				
 				# add forced parameters to command line
 				for forced in self.ailist[aiclient['name']]['forced']:
@@ -371,9 +360,8 @@ class SinglePlayerGame:
 					aicmd += ' ' + self.ailist[aiclient['name']]['parameters'][pname]['commandstring'] % value
 
 				# call the control script
-				rc = subprocess.call(aicmd, shell=True)
-				if rc is not 0:
-					raise InitError, 'AI client ' + aiclient['name'] + ' failed to start'
+				# TODO: redirect stdout and stderr to null
+				aiclient['proc'] = Popen(aicmd, shell=True)
 
 			# set active flag
 			self.active = True
@@ -395,24 +383,13 @@ class SinglePlayerGame:
 
 		# stop server
 		if self.sname != '':
-			servercmd = ''
-			for sharedir in sharepath:
-				if os.path.isdir(sharedir) and os.path.isfile(os.path.join(sharedir, 'servers', self.sname + '.init')):
-					servercmd = os.path.join(sharedir, 'servers', self.sname + '.init') + ' stop'
-					break
-			if servercmd != '':
-				os.system(servercmd)
+			self.sproc.kill()
 			self.sname = ''
 			self.rname = ''
 
 		# stop AI clients
 		for aiclient in self.opponents:
-			aicmd = ''
-			for sharedir in sharepath:
-				if os.path.isdir(sharedir) and os.path.isfile(os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init')):
-					aicmd = os.path.join(sharedir, 'aiclients', aiclient['name'] + '.init') + ' stop'
-			if aicmd != '':
-				os.system(aicmd)
+			aiclient['proc'].kill()
 		self.opponents = []
 
 		# reset active flag

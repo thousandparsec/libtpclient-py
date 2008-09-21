@@ -59,6 +59,8 @@ class ServerList(dict):
 				self[sname]['version'] = server.find('version').text
 			if not self[sname].has_key('description') and server.find('description') is not None:
 				self[sname]['description'] = server.find('description').text
+			if not self[sname].has_key('commandstring') and server.find('commandstring') is not None:
+				self[sname]['commandstring'] = server.find('commandstring').text
 			for forced in server.findall('forced'):
 				self[sname]['forced'].append(forced.text)
 			for sparam in server.findall('parameter'):
@@ -111,6 +113,7 @@ class AIList(dict):
 				self[ainame]['longname'] = aiclient.find('longname').text
 				self[ainame]['version'] = aiclient.find('version').text
 				self[ainame]['description'] = aiclient.find('description').text
+				self[ainame]['commandstring'] = aiclient.find('commandstring').text
 				self[ainame]['rules'] = []
 				self[ainame]['forced'] = []
 				self[ainame]['parameters'] = {}
@@ -335,7 +338,7 @@ class SinglePlayerGame:
 				raise InitError, 'Server ' + sname + ' failed to start'
 
 			# wait for the server to initialize
-			# FIXME: what is the system is loaded?
+			# FIXME: use admin protocol if available to check this (loop)
 			time.sleep(5)
 	
 			# start AI clients

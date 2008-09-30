@@ -9,14 +9,17 @@ installpath = os.path.split(os.path.split(__path__)[0])[0]
 # Get the git version this tree is based on
 if os.path.exists(os.path.join(installpath, '.git')):
 	# Read in git's 'HEAD' file which points to the correct reff to look at
-	h = open(os.path.join(installpath, '.git', 'HEAD'))
-	# Read in the ref
-	ref = h.readline().strip().split(': ', 1)[1]
-	# This file has the SHA1
-	p = open(os.path.join(installpath, '.git', ref))
-	del ref
+	h = open(os.path.join(installpath, '.git', 'HEAD')).readline().strip()
+	try:
+		# Read in the ref
+		ref = h.split(': ', 1)[1]
+		# This file has the SHA1
+		p = open(os.path.join(installpath, '.git', ref))
+		del ref
 
-	version_git = p.read().strip()
+		version_git = p.read().strip()
+	except IndexError:
+		version_git = h
 
 	# What version are we trying to get too?
 	import time

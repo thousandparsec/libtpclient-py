@@ -30,7 +30,7 @@ if ET is None:
 from version import installpath
 
 # where to look for XML definitions and control scripts
-sharepath = ['/usr/share/tp', '/usr/local/share/tp', '/opt/tp', os.path.join(installpath, 'tp/client/singleplayer')]
+sharepath = ['/usr/share/tp', '/usr/share/games/tp', '/usr/local/share/tp', '/opt/tp', os.path.join(installpath, 'tp/client/singleplayer')]
 
 
 class ServerList(dict):
@@ -145,13 +145,16 @@ class SinglePlayerGame:
 		self.serverlist = ServerList()
 		self.ailist = AIList()
 		for sharedir in sharepath:
-			if os.path.isdir(sharedir):
-				for xmlfile in os.listdir(os.path.join(sharedir, 'servers')):
-					xmlfile = os.path.join(sharedir, 'servers', xmlfile)
+			serverdir = os.path.join(sharedir, 'servers')
+			if os.path.isdir(serverdir):
+				for xmlfile in os.listdir(serverdir):
+					xmlfile = os.path.join(serverdir, xmlfile)
 					if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
 						self.serverlist.absorb_xml(xmlfile)
-				for xmlfile in os.listdir(os.path.join(sharedir, 'aiclients')):
-					xmlfile = os.path.join(sharedir, 'aiclients', xmlfile)
+			aidir = os.path.join(sharedir, 'aiclients')
+			if os.path.isdir(aidir):
+				for xmlfile in os.listdir(aidir):
+					xmlfile = os.path.join(aidir, xmlfile)
 					if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
 						self.ailist.absorb_xml(xmlfile)
 

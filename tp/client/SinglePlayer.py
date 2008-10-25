@@ -2,6 +2,7 @@
 import os
 import time
 import socket
+import urllib
 from killableprocess import Popen
 
 # find an elementtree implementation
@@ -31,6 +32,9 @@ from version import installpath
 
 # where to look for XML definitions and control scripts
 sharepath = ['/usr/share/tp', '/usr/share/games/tp', '/usr/local/share/tp', '/opt/tp', os.path.join(installpath, 'tp/client/singleplayer')]
+
+# URL of download list
+dlurl = 'http://thousandparsec.net/tp/downloads.xml'
 
 
 class ServerList(dict):
@@ -131,6 +135,61 @@ class AIList(dict):
 						'commandstring' : aiparam.find('commandstring').text,
 					}
 
+class DownloadList(dict):
+	"""\
+	Builds a list of potentially downloadable servers and AI clients.
+	"""
+
+	def __init__(self):
+		super(DownloadList, self).__init__()
+		self['server'] = {}
+		self['ai']  = {}
+		self.rulesets = []
+		self.got = self.get_list()
+
+	def get_list(self):
+		"""\
+		Fetch and parse the XML list of available downloads from TP web.
+		"""
+		try:
+			dlxml = urllib.urlopen(dlurl)
+			if not dlxml.info()['content-type'] == 'application/xml':
+				return False
+			xmltree = ET.parse(dlxml)
+			for category in xmltree.findall('products/category'):
+				cname = category.attrib['name']
+				if cname in self.keys():
+					self[cname] = {}
+					for product in category.findall('product'):
+						if product.attrib['visible'] != 'no':
+							self[cname][product.attrib['name']] = []
+							for rules in product.findall('rules'):
+								self[cname][product.attrib['name']].append(rules.text)
+								if not rules.text in self.rulesets:
+									self.rulesets.append(rules.text)
+		except:
+			return False
+		return True
+
+	def list_servers_with_ruleset(self, rname):
+		"""\
+		Returns a list of available servers supporting the specified ruleset.
+		"""
+		servers = []
+		for sname in self['server'].keys():
+			if rname in self['server'][sname]:
+				servers.append(sname)
+		return servers
+
+	def list_aiclients_with_ruleset(self, rname):
+		"""\
+		Returns a list of available AI clients supporting the specified ruleset.
+		"""
+		aiclients = []
+		for ainame in self['ai'].keys():
+			if rname in self['ai'][ainame]:
+				aiclients.append(ainame)
+		return aiclients
 
 class InitError(Exception):
 	pass

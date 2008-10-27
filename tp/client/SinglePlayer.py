@@ -31,7 +31,22 @@ if ET is None:
 from version import installpath
 
 # where to look for XML definitions and control scripts
-sharepath = ['/usr/share/tp', '/usr/share/games/tp', '/usr/local/share/tp', '/opt/tp', os.path.join(installpath, 'tp/client/singleplayer')]
+if sys.platform == 'win32':
+	# look for paths in HKLM\Software\Thousand Parsec\SinglePlayer
+	import _winreg
+	tpsp = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "Software\\Thousand Parsec\\SinglePlayer")
+	sharepath = []
+	try:
+		i = 0
+		while True:
+			name, value, type = _winreg.EnumValue(tpsp, i)
+			sharepath.append(value)
+			i += 1
+	except WindowsError:
+		pass
+else:
+	# use the default unix paths
+	sharepath = ['/usr/share/tp', '/usr/share/games/tp', '/usr/local/share/tp', '/opt/tp', os.path.join(installpath, 'tp/client/singleplayer')]
 
 # URL of download list
 dlurl = 'http://thousandparsec.net/tp/downloads.xml'

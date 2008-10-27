@@ -1,5 +1,6 @@
 # Python imports
 import os
+import sys
 import time
 import socket
 import urllib
@@ -47,9 +48,6 @@ if sys.platform == 'win32':
 else:
 	# use the default unix paths
 	sharepath = ['/usr/share/tp', '/usr/share/games/tp', '/usr/local/share/tp', '/opt/tp', os.path.join(installpath, 'tp/client/singleplayer')]
-
-# URL of download list
-dlurl = 'http://thousandparsec.net/tp/downloads.xml'
 
 
 class ServerList(dict):
@@ -155,8 +153,12 @@ class DownloadList(dict):
 	Builds a list of potentially downloadable servers and AI clients.
 	"""
 
-	def __init__(self):
+	def __init__(self,
+				 urlxml = 'http://thousandparsec.net/tp/downloads.xml',
+				 urldlp = 'http://thousandparsec.net/tp/downloads.php'):
 		super(DownloadList, self).__init__()
+		self.urlxml = urlxml
+		self.urldlp = urldlp
 		self['server'] = {}
 		self['ai']  = {}
 		self.rulesets = []
@@ -167,7 +169,7 @@ class DownloadList(dict):
 		Fetch and parse the XML list of available downloads from TP web.
 		"""
 		try:
-			dlxml = urllib.urlopen(dlurl)
+			dlxml = urllib.urlopen(self.urlxml)
 			if not dlxml.info()['content-type'] == 'application/xml':
 				return False
 			xmltree = ET.parse(dlxml)
@@ -205,6 +207,15 @@ class DownloadList(dict):
 			if rname in self['ai'][ainame]:
 				aiclients.append(ainame)
 		return aiclients
+
+	def linkurl(self, component = None):
+		"""\
+		Returns the download page URL, optionally for a specific component type.
+		"""
+		if component in self.keys():
+			return self.urldlp + '#' + component
+		else:
+			return self.urldlp
 
 class InitError(Exception):
 	pass

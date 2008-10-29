@@ -213,7 +213,7 @@ class DownloadList(dict):
 		Returns the download page URL, optionally for a specific component type.
 		"""
 		if component in self.keys():
-			return self.urldlp + '#' + component
+			return self.urldlp + '?category=' + component
 		else:
 			return self.urldlp
 

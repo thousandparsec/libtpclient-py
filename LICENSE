@@ -11,16 +11,19 @@ pyscheme (which is included in this package under tp/client/pyscheme) is under
 a MIT license.
  - License Full Text - http://www.opensource.org/licenses/mit-license.php
  - Original downloaded from - http://hkn.eecs.berkeley.edu/~dyoo/python/pyscheme/
- - Copyright Holder - Danny Yoo (dyoo@hkn.eecs.berkeley.edu)
+ - Copyright Holder - Danny Yoo (dyoo@hkn.eecs.berkeley.edu) 
+						(C) 2004
 
 strptime.py (which is included in this package under tp/client/strptime.py) is
 under the Python 2.4.2 License.
  - Original downladed from - http://www.python.org/
  - License Full Text - http://www.python.org/download/releases/2.4.2/license/
- - Copyright Holder - Brett Cannon (brett@python.org)
+ - Copyright Holder - Brett Cannon (brett@python.org) 
+						(C) 2001-2008
 
 decorator.py (which is included in this package under tp/client/decorator.py)
 is under the BSD License.
  - Original downloaded from - http://pypi.python.org/pypi/decorator
  - License Full Text - See file
- - Copyright Holder - Michele Simionato (michele.simionato@gmail.com)
+ - Copyright Holder - Michele Simionato (michele.simionato@gmail.com) 
+						(C) 2007-2008

@@ -29,7 +29,7 @@ if ET is None:
     raise ImportError(str(errors))
 
 # local imports
-from version import installpath
+import version
 
 # where to look for XML definitions and control scripts
 if sys.platform == 'win32':
@@ -47,7 +47,7 @@ if sys.platform == 'win32':
 		pass
 else:
 	# use the default unix paths
-	sharepath = ['/usr/share/tp', '/usr/share/games/tp', '/usr/local/share/tp', '/opt/tp', os.path.join(installpath, 'tp/client/singleplayer')]
+	sharepath = ['/usr/share/tp', '/usr/share/games/tp', '/usr/local/share/tp', '/opt/tp', os.path.join(version.installpath, 'tp/client/singleplayer')]
 
 
 class ServerList(dict):
@@ -242,6 +242,16 @@ class SinglePlayerGame:
 					xmlfile = os.path.join(aidir, xmlfile)
 					if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
 						self.ailist.absorb_xml(xmlfile)
+
+        # check for development versions
+		if hasattr(version, 'version_git'):
+			for repo in os.listdir('..'):
+				xmlfile = os.path.join('..', repo, 'devserver.xml')
+				if os.path.exists(xmlfile):
+					self.serverlist.absorb_xml(xmlfile)
+				xmlfile = os.path.join( '..', repo, 'devaiclient.xml' )
+				if os.path.exists( os.path.join( '..', repo, 'devaiclient.xml' ) ):
+					self.ailist.absorb_xml(xmlfile)
 
 		# initialize internals
 		self.active = False

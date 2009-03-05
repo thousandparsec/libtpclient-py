@@ -48,105 +48,79 @@ if sys.platform == 'win32':
 else:
 	# use the default unix paths
 	sharepath = ['/usr/share/tp', '/usr/share/games/tp', '/usr/local/share/tp', '/opt/tp', os.path.join(version.installpath, 'tp/client/singleplayer')]
+	if hasattr(version, 'version_git'):
+		for repo in [os.path.join('..', r) for r in os.listdir('..')]:
+			if os.path.isdir(repo):
+				sharepath.append(repo)
 
 
-class ServerList(dict):
+class _Server(dict):
+	def __init__(self):
+		for k in ['longname', 'version', 'description', 'commandstring', 'cwd']:
+			self[k] = ''
+		self['forced'] = []
+		self['parameter'] = {}
+		self['ruleset'] = {}
+		super(_Server, self).__init__()
+	
+class _AIClient(dict):
+	def __init__(self):
+		for k in ['longname', 'version', 'description', 'commandstring', 'cwd']:
+			self[k] = ''
+		self['rules'] = []
+		self['forced'] = []
+		self['parameter'] = {}
+		super(_AIClient, self).__init__()
+
+class _Ruleset(dict):
+	def __init__(self):
+		for k in ['longname', 'version', 'description']:
+			self[k] = ''
+		self['forced'] = []
+		self['parameter'] = {}
+		super(_Ruleset, self).__init__()
+
+class _Parameter(dict):
+	def __init__(self):
+		for el in ['type', 'longname', 'description', 'default', 'commandstring']:
+			self[el] = ''
+		super(_Parameter, self).__init__()
+
+class LocalList(dict):
 	"""\
-	Builds a list of servers from multiple XML files.
-	Includes rulesets and special parameters.
 	"""
 
-	def absorb_xml(self, xmlfile):
-		"""\
-		Import an XML file describing a server or server component.
+	def __init__(self):
+		self['server'] = {}
+		self['aiclient'] = {}
+		super(LocalList, self).__init__()
+	
+	def absorb_xml(self, tree, d = None):
+		if d is None:
+			d = self
 
-		@param xmlfile The XML file to import.
-		"""
-		xmltree = ET.parse(xmlfile)
-		for server in xmltree.findall('server'):
-			sname = server.attrib['name']
-			if not self.has_key(sname):
-				self[sname] = {}
-				self[sname]['forced'] = []
-				self[sname]['parameters'] = {}
-				self[sname]['rulesets'] = {}
-			if not self[sname].has_key('longname') and server.find('longname') is not None:
-				self[sname]['longname'] = server.find('longname').text
-			if not self[sname].has_key('version') and server.find('version') is not None:
-				self[sname]['version'] = server.find('version').text
-			if not self[sname].has_key('description') and server.find('description') is not None:
-				self[sname]['description'] = server.find('description').text
-			if not self[sname].has_key('commandstring') and server.find('commandstring') is not None:
-				self[sname]['commandstring'] = server.find('commandstring').text
-			for forced in server.findall('forced'):
-				self[sname]['forced'].append(forced.text)
-			for sparam in server.findall('parameter'):
-				pname = sparam.attrib['name']
-				self[sname]['parameters'][pname] = {
-						'type' : sparam.attrib['type'],
-						'longname' : sparam.find('longname').text,
-						'description' : sparam.find('description').text,
-						'default' : sparam.find('default').text,
-						'commandstring' : sparam.find('commandstring').text
+		classdict = { 'server' : _Server,
+					  'aiclient' : _AIClient,
+					  'ruleset' : _Ruleset,
+					  'parameter' : _Parameter,
 					}
-			for ruleset in server.findall('ruleset'):
-				rname = ruleset.attrib['name']
-				self[sname]['rulesets'][rname] = {
-						'longname' : ruleset.find('longname').text,
-						'version' : ruleset.find('version').text,
-						'description' : ruleset.find('description').text,
-						'forced' : [],
-						'parameters' : {},
-					}
-				for forced in ruleset.findall('forced'):
-					self[sname]['rulesets'][rname]['forced'].append(forced.text)
-				for rparam in ruleset.findall('parameter'):
-					pname = rparam.attrib['name']
-					self[sname]['rulesets'][rname]['parameters'][pname] = {
-							'type' : rparam.attrib['type'],
-							'longname' : rparam.find('longname').text,
-							'description' : rparam.find('description').text,
-							'default' : rparam.find('default').text,
-							'commandstring' : rparam.find('commandstring').text
-						}
 
-class AIList(dict):
-	"""\
-	Builds a list of AIs from multiple XML files.
-	Includes rulesets and special parameters.
-	"""
+		for k in d.keys():
+			if type(d[k]) is dict:
+				for s in tree.findall(k):
+					sname = s.attrib['name']
+					if not d[k].has_key(sname):
+						d[k][sname] = classdict[k]()
+					self.absorb_xml(s, d[k][sname])
+			elif type(d[k]) is list:
+				for e in tree.findall(k):
+					d[k].append(e.text)
+			elif d[k] == '':
+				if tree.attrib.has_key(k):
+					d[k] = tree.attrib[k]
+				elif tree.find(k) is not None:
+					d[k] = tree.find(k).text
 
-	def absorb_xml(self, xmlfile):
-		"""\
-		Import an XML file describing a server or server component.
-
-		@param xmlfile The XML file to import.
-		"""
-		xmltree = ET.parse(xmlfile)
-		for aiclient in xmltree.findall('aiclient'):
-			ainame = aiclient.attrib['name']
-			if not self.has_key(ainame):
-				self[ainame] = {}
-				self[ainame]['longname'] = aiclient.find('longname').text
-				self[ainame]['version'] = aiclient.find('version').text
-				self[ainame]['description'] = aiclient.find('description').text
-				self[ainame]['commandstring'] = aiclient.find('commandstring').text
-				self[ainame]['rules'] = []
-				self[ainame]['forced'] = []
-				self[ainame]['parameters'] = {}
-			for rules in aiclient.findall('rules'):
-				self[ainame]['rules'].append(rules.text)
-			for forced in aiclient.findall('forced'):
-				self[ainame]['forced'].append(forced.text)
-			for aiparam in aiclient.findall('parameter'):
-				pname = aiparam.attrib['name']
-				self[ainame]['parameters'][pname] = {
-						'type' : aiparam.attrib['type'],
-						'longname' : aiparam.find('longname').text,
-						'description' : aiparam.find('description').text,
-						'default' : aiparam.find('default').text,
-						'commandstring' : aiparam.find('commandstring').text,
-					}
 
 class DownloadList(dict):
 	"""\
@@ -226,32 +200,20 @@ class SinglePlayerGame:
 	"""
 
 	def __init__(self):
-		# build server and AI client lists
-		self.serverlist = ServerList()
-		self.ailist = AIList()
+		# build local list
+		self.locallist = LocalList()
 		for sharedir in sharepath:
-			serverdir = os.path.join(sharedir, 'servers')
-			if os.path.isdir(serverdir):
-				for xmlfile in os.listdir(serverdir):
-					xmlfile = os.path.join(serverdir, xmlfile)
-					if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
-						self.serverlist.absorb_xml(xmlfile)
-			aidir = os.path.join(sharedir, 'aiclients')
-			if os.path.isdir(aidir):
-				for xmlfile in os.listdir(aidir):
-					xmlfile = os.path.join(aidir, xmlfile)
-					if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
-						self.ailist.absorb_xml(xmlfile)
-
-        # check for development versions
-		if hasattr(version, 'version_git'):
-			for repo in os.listdir('..'):
-				xmlfile = os.path.join('..', repo, 'devserver.xml')
-				if os.path.exists(xmlfile):
-					self.serverlist.absorb_xml(xmlfile)
-				xmlfile = os.path.join( '..', repo, 'devaiclient.xml' )
-				if os.path.exists( os.path.join( '..', repo, 'devaiclient.xml' ) ):
-					self.ailist.absorb_xml(xmlfile)
+			for dir in [sharedir, os.path.join(sharedir, 'servers'), os.path.join(sharedir, 'aiclients')]:
+				if os.path.isdir(dir):
+					for xmlfile in os.listdir(dir):
+						xmlfile = os.path.join(dir, xmlfile)
+						if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
+							try:
+								xmltree = ET.parse(xmlfile)
+							except:
+								continue
+							if xmltree._root.tag == 'tpconfig':
+								self.locallist.absorb_xml(xmltree)
 
 		# initialize internals
 		self.active = False
@@ -273,8 +235,8 @@ class SinglePlayerGame:
 		@return A list of rulesets.
 		"""
 		rulesets = []
-		for sname in self.serverlist.keys():
-			for rname in self.serverlist[sname]['rulesets'].keys():
+		for sname in self.locallist['server'].keys():
+			for rname in self.locallist['server'][sname]['ruleset'].keys():
 				if rname not in rulesets:
 					rulesets.append(rname)
 		return rulesets
@@ -290,11 +252,11 @@ class SinglePlayerGame:
 			sname = self.sname
 			rname = self.rname
 		else:
-			for sname in self.serverlist.keys():
-				if self.serverlist[sname]['rulesets'].has_key(rname):
+			for sname in self.locallist['server'].keys():
+				if self.locallist['server'][sname]['ruleset'].has_key(rname):
 					break
 		try:
-			return self.serverlist[sname]['rulesets'][rname]
+			return self.locallist['server'][sname]['ruleset'][rname]
 		except KeyError:
 			return None
 
@@ -308,8 +270,8 @@ class SinglePlayerGame:
 		if rname is None:
 			rname = self.rname
 		servers = []
-		for sname in self.serverlist.keys():
-			if self.serverlist[sname]['rulesets'].has_key(rname):
+		for sname in self.locallist['server'].keys():
+			if self.locallist['server'][sname]['ruleset'].has_key(rname):
 				servers.append(sname)
 		return servers
 
@@ -323,8 +285,8 @@ class SinglePlayerGame:
 		if rname is None:
 			rname = self.rname
 		aiclients = []
-		for ainame in self.ailist.keys():
-			if rname in self.ailist[ainame]['rules']:
+		for ainame in self.locallist['aiclient'].keys():
+			if rname in self.locallist['aiclient'][ainame]['rules']:
 				aiclients.append(ainame)
 		return aiclients
 
@@ -337,7 +299,7 @@ class SinglePlayerGame:
 		"""
 		if sname is None:
 			sname = self.sname
-		return self.serverlist[sname]['parameters']
+		return self.locallist['server'][sname]['parameter']
 
 	def list_rparams(self, sname = None, rname = None):
 		"""\
@@ -350,7 +312,7 @@ class SinglePlayerGame:
 			sname = self.sname
 		if rname is None:
 			rname = self.rname
-		return self.serverlist[sname]['rulesets'][rname]['parameters']
+		return self.locallist['server'][sname]['ruleset'][rname]['parameter']
 
 	def add_opponent(self, ainame, aiuser, aiparams):
 		"""\
@@ -390,8 +352,13 @@ class SinglePlayerGame:
 
 		try:
 			# start server
-			server = self.serverlist[self.sname]
-			ruleset = server['rulesets'][self.rname]
+			server = self.locallist['server'][self.sname]
+			ruleset = server['ruleset'][self.rname]
+			
+			# start server - set working directory
+			servercwd = server['cwd']
+			if servercwd == '':
+				servercwd = None
 
 			# start server - create server command line
 			servercmd = server['commandstring'] % {
@@ -404,32 +371,32 @@ class SinglePlayerGame:
 				servercmd += ' ' + forced
 
 			# start server - add regular parameters to command line
-			for pname in server['parameters'].keys():
-				value = server['parameters'][pname]['default']
+			for pname in server['parameter'].keys():
+				value = server['parameter'][pname]['default']
 				if self.sparams.has_key(pname):
 					value = self.sparams[pname]
-				value = self._format_value(value, server['parameters'][pname]['type'])
+				value = self._format_value(value, server['parameter'][pname]['type'])
 				if value is None:
 					continue
-				servercmd += ' ' + server['parameters'][pname]['commandstring'] % value
+				servercmd += ' ' + server['parameter'][pname]['commandstring'] % value
 
 			# start server - add forced ruleset parameters to command line
 			for forced in ruleset['forced']:
 				servercmd += ' ' + forced
 			
 			# start server - add regular ruleset parameters to command line
-			for pname in ruleset['parameters'].keys():
-				value = ruleset['parameters'][pname]['default']
+			for pname in ruleset['parameter'].keys():
+				value = ruleset['parameter'][pname]['default']
 				if self.rparams.has_key(pname):
 					value = self.rparams[pname]
-				value = self._format_value(value, ruleset['parameters'][pname]['type'])
+				value = self._format_value(value, ruleset['parameter'][pname]['type'])
 				if value is None:
 					continue
-				servercmd += ' ' + ruleset['parameters'][pname]['commandstring'] % value
+				servercmd += ' ' + ruleset['parameter'][pname]['commandstring'] % value
 
 			# start server - call the control script
-			# TODO: redirect stdout and stderr to null
-			self.sproc = Popen(servercmd, shell=True)
+			# TODO: allow redirection of stdout and stderr
+			self.sproc = Popen(servercmd, cwd = servercwd, shell = True)
 
 			# wait for the server to initialize
 			# FIXME: use admin protocol if available to check this (loop)
@@ -437,29 +404,35 @@ class SinglePlayerGame:
 	
 			# start AI clients
 			for aiclient in self.opponents:
-				aicmd = self.ailist[aiclient['name']]['commandstring'] % {
+				# set working directory
+				aicwd = self.locallist['aiclient'][aiclient['name']]['cwd']
+				if aicwd == '':
+					aicwd = None
+
+				# create ai client command line
+				aicmd = self.locallist['aiclient'][aiclient['name']]['commandstring'] % {
 							'port': port,
 							'rname': self.rname,
 							'user': aiclient['user'],
 						}
 				
 				# add forced parameters to command line
-				for forced in self.ailist[aiclient['name']]['forced']:
+				for forced in self.locallist['aiclient'][aiclient['name']]['forced']:
 					aicmd += ' ' + forced
 
 				# add regular parameters to command line
-				for pname in self.ailist[aiclient['name']]['parameters'].keys():
-					value = self.ailist[aiclient['name']]['parameters'][pname]['default']
-					if aiclient['parameters'].has_key(pname):
-						value = aiclient['parameters'][pname]
-					value = self._format_value(value, self.ailist[aiclient['name']]['parameters'][pname]['type'])
+				for pname in self.locallist['aiclient'][aiclient['name']]['parameter'].keys():
+					value = self.locallist['aiclient'][aiclient['name']]['parameter'][pname]['default']
+					if aiclient['parameter'].has_key(pname):
+						value = aiclient['parameter'][pname]
+					value = self._format_value(value, self.locallist['aiclient'][aiclient['name']]['parameter'][pname]['type'])
 					if value is None:
 						continue
-					aicmd += ' ' + self.ailist[aiclient['name']]['parameters'][pname]['commandstring'] % value
+					aicmd += ' ' + self.locallist['aiclient'][aiclient['name']]['parameter'][pname]['commandstring'] % value
 
 				# call the control script
-				# TODO: redirect stdout and stderr to null
-				aiclient['proc'] = Popen(aicmd, shell=True)
+				# TODO: allow redirection stdout and stderr
+				aiclient['proc'] = Popen(aicmd, cwd = aicwd, shell = True)
 
 			# set active flag
 			self.active = True

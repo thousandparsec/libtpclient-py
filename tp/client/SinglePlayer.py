@@ -149,15 +149,20 @@ class DownloadList(dict):
 			xmltree = ET.parse(dlxml)
 			for category in xmltree.findall('products/category'):
 				cname = category.attrib['name']
-				if cname in self.keys():
-					self[cname] = {}
-					for product in category.findall('product'):
-						if product.attrib['visible'] != 'no':
-							self[cname][product.attrib['name']] = []
-							for rules in product.findall('rules'):
-								self[cname][product.attrib['name']].append(rules.text)
-								if not rules.text in self.rulesets:
-									self.rulesets.append(rules.text)
+				if not cname in self.keys():
+					continue
+
+				self[cname] = {}
+				for product in category.findall('product'):
+					if product.attrib['visible'] == 'no':
+						continue
+
+					self[cname][product.attrib['name']] = []
+					for rules in product.findall('rules'):
+						self[cname][product.attrib['name']].append(rules.text)
+						if not rules.text in self.rulesets:
+							self.rulesets.append(rules.text)
+		# FIXME: Bare excepts are bad.
 		except:
 			return False
 		return True
@@ -204,16 +209,27 @@ class SinglePlayerGame:
 		self.locallist = LocalList()
 		for sharedir in sharepath:
 			for dir in [sharedir, os.path.join(sharedir, 'servers'), os.path.join(sharedir, 'aiclients')]:
-				if os.path.isdir(dir):
-					for xmlfile in os.listdir(dir):
-						xmlfile = os.path.join(dir, xmlfile)
-						if os.path.isfile(xmlfile) and xmlfile.endswith('xml'):
-							try:
-								xmltree = ET.parse(xmlfile)
-							except:
-								continue
-							if xmltree._root.tag == 'tpconfig':
-								self.locallist.absorb_xml(xmltree)
+				if not os.path.isdir(dir):
+					continue
+
+				for xmlfile in os.listdir(dir):
+					xmlfile = os.path.join(dir, xmlfile)
+					if not os.path.isfile(xmlfile):
+						continue
+
+					if not xmlfile.endswith('xml'):
+						continue
+
+					try:
+						xmltree = ET.parse(xmlfile)
+					except:
+						continue
+
+					if not xmltree._root.tag == 'tpconfig':
+						continue
+
+					print "Found single player xml file at %s/%s" % (sharedir, xmlfile)
+					self.locallist.absorb_xml(xmltree)
 
 		# initialize internals
 		self.active = False

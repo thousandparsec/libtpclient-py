@@ -269,7 +269,7 @@ class SinglePlayerGame:
 
 					# ensure it is of the type we are looking for
 					if (not xmltree._root.attrib.has_key('type') and type != 'installed') \
-					or xmltree._root.attrib['type'] != type:
+					or xmltree._root.attrib.has_key('type') and xmltree._root.attrib['type'] != type:
 						continue
 
 					print "Found single player xml file at %s/%s - including" % (sharedir, xmlfile)

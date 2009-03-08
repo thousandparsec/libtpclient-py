@@ -275,8 +275,9 @@ class SinglePlayerGame:
 		@return Current or first found by name ruleset information,
 		"""
 		if rname is None:
-			sname = self.sname
 			rname = self.rname
+		if self.sname:
+			sname = self.sname
 		else:
 			for sname in self.locallist['server'].keys():
 				if self.locallist['server'][sname]['ruleset'].has_key(rname):

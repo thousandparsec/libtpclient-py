@@ -241,6 +241,12 @@ class SinglePlayerGame:
 					print "Found single player xml file at %s/%s - including" % (sharedir, xmlfile)
 					self.locallist.absorb_xml(xmltree)
 
+		# verify existence of command paths referred to in local list
+		for t in self.locallist.keys():
+			for s in self.locallist[t].keys():
+				if not os.path.exists(os.path.join(self.locallist[t][s]['cwd'], self.locallist[t][s]['commandstring'].split()[0])):
+					del self.locallist[t][s]
+
 		# initialize internals
 		self.active = False
 		self.sname = ''
@@ -275,8 +281,9 @@ class SinglePlayerGame:
 		@return Current or first found by name ruleset information,
 		"""
 		if rname is None:
-			sname = self.sname
 			rname = self.rname
+		if self.sname:
+			sname = self.sname
 		else:
 			for sname in self.locallist['server'].keys():
 				if self.locallist['server'][sname]['ruleset'].has_key(rname):
@@ -501,15 +508,15 @@ class SinglePlayerGame:
 		Internal: formats a parameter value based on type.
 
 		@oaram value The value to format.
-		@param type The target value type (I, S, or B).
+		@param type The target value type (I, S, F, B).
 		@return The formatted value or None.
 		"""
 		if value is None or str(value) == '':
 			return None
 		elif type == 'I':
 			return int(value)
-		elif type == 'S':
-			 return str(value)
+		elif type == 'S' or type == 'F':
+			return str(value)
 		elif type == 'B':
 			return ''
 		else:

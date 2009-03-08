@@ -32,32 +32,34 @@ if ET is None:
 import version
 
 # where to look for XML definitions and control scripts
+ins_sharepath = []
+inp_sharepath = []
 if sys.platform == 'win32':
 	# look for paths in HKLM\Software\Thousand Parsec\SinglePlayer
 	import _winreg
 	tpsp = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "Software\\Thousand Parsec\\SinglePlayer")
-	sharepath = []
 	try:
 		i = 0
 		while True:
 			name, value, type = _winreg.EnumValue(tpsp, i)
-			sharepath.append(value)
+			ins_sharepath.append(value)
 			i += 1
 	except WindowsError:
 		pass
 else:
 	# use the default unix paths
-	sharepath = ['/usr/share/tp', 
-				 '/usr/share/games/tp', 
-                 '/usr/local/share/tp', 
-                 '/opt/tp', 
-                 os.path.join(version.installpath, 'tp/client/singleplayer')]
+	ins_sharepath = ['/usr/share/tp', 
+		 			 '/usr/share/games/tp', 
+           			 '/usr/local/share/tp', 
+           			 '/opt/tp', 
+           			 os.path.join(version.installpath, 'tp/client/singleplayer'),
+		]
 	# On development platforms also include the directories in the same path as
 	# me.
 	if hasattr(version, 'version_git'):
 		for repo in [os.path.join('..', r) for r in os.listdir('..')]:
 			if os.path.isdir(repo):
-				sharepath.append(repo)
+				inp_sharepath.append(repo)
 
 
 class _Server(dict):
@@ -213,6 +215,32 @@ class SinglePlayerGame:
 	def __init__(self):
 		# build local list
 		self.locallist = LocalList()
+		self.import_locallist(ins_sharepath, 'installed')
+		if hasattr(version, 'version_git'):
+			self.import_locallist(inp_sharepath, 'inplace')
+
+		# verify existence of command paths referred to in local list
+		for t in self.locallist.keys():
+			for s in self.locallist[t].keys():
+				exe = self.locallist[t][s]['commandstring'].split()[0]
+				if not os.path.exists(os.path.join(self.locallist[t][s]['cwd'], exe)):
+					print "Removing %s as command %s not found in %s." % (
+						self.locallist[t][s]['longname'], exe, self.locallist[t][s]['cwd'])
+					del self.locallist[t][s]
+
+		# initialize internals
+		self.active = False
+		self.sname = ''
+		self.rname = ''
+		self.sparams = {}
+		self.rparams = {}
+		self.opponents = []
+
+	def __del__(self):
+		if self.active:
+			self.stop()
+
+	def import_locallist(self, sharepath, type):
 		for sharedir in sharepath:
 			for dir in [sharedir, os.path.join(sharedir, 'servers'), os.path.join(sharedir, 'aiclients')]:
 				if not os.path.isdir(dir):
@@ -235,32 +263,17 @@ class SinglePlayerGame:
 					except:
 						continue
 
+					# ensure this is a tpconfig document
 					if not xmltree._root.tag == 'tpconfig':
+						continue
+
+					# ensure it is of the type we are looking for
+					if (not xmltree._root.attrib.has_key('type') and type != 'installed') \
+					or xmltree._root.attrib['type'] != type:
 						continue
 
 					print "Found single player xml file at %s/%s - including" % (sharedir, xmlfile)
 					self.locallist.absorb_xml(xmltree)
-
-		# verify existence of command paths referred to in local list
-		for t in self.locallist.keys():
-			for s in self.locallist[t].keys():
-				exe = self.locallist[t][s]['commandstring'].split()[0]
-				if not os.path.exists(os.path.join(self.locallist[t][s]['cwd'], exe)):
-					print "Removing %s as command %s not found in %s." % (
-						self.locallist[t][s]['longname'], exe, self.locallist[t][s]['cwd'])
-					del self.locallist[t][s]
-
-		# initialize internals
-		self.active = False
-		self.sname = ''
-		self.rname = ''
-		self.sparams = {}
-		self.rparams = {}
-		self.opponents = []
-
-	def __del__(self):
-		if self.active:
-			self.stop()
 
 	@property
 	def rulesets(self):

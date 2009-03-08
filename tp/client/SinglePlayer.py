@@ -47,7 +47,13 @@ if sys.platform == 'win32':
 		pass
 else:
 	# use the default unix paths
-	sharepath = ['/usr/share/tp', '/usr/share/games/tp', '/usr/local/share/tp', '/opt/tp', os.path.join(version.installpath, 'tp/client/singleplayer')]
+	sharepath = ['/usr/share/tp', 
+				 '/usr/share/games/tp', 
+                 '/usr/local/share/tp', 
+                 '/opt/tp', 
+                 os.path.join(version.installpath, 'tp/client/singleplayer')]
+	# On development platforms also include the directories in the same path as
+	# me.
 	if hasattr(version, 'version_git'):
 		for repo in [os.path.join('..', r) for r in os.listdir('..')]:
 			if os.path.isdir(repo):
@@ -210,7 +216,10 @@ class SinglePlayerGame:
 		for sharedir in sharepath:
 			for dir in [sharedir, os.path.join(sharedir, 'servers'), os.path.join(sharedir, 'aiclients')]:
 				if not os.path.isdir(dir):
+					print "Warning search directory %s does not exist" % dir
 					continue
+
+				print "Searching in directory: %s" % dir
 
 				for xmlfile in os.listdir(dir):
 					xmlfile = os.path.join(dir, xmlfile)
@@ -220,6 +229,7 @@ class SinglePlayerGame:
 					if not xmlfile.endswith('xml'):
 						continue
 
+					print "Found xml file at %s/%s" % (sharedir, xmlfile)
 					try:
 						xmltree = ET.parse(xmlfile)
 					except:
@@ -228,7 +238,7 @@ class SinglePlayerGame:
 					if not xmltree._root.tag == 'tpconfig':
 						continue
 
-					print "Found single player xml file at %s/%s" % (sharedir, xmlfile)
+					print "Found single player xml file at %s/%s - including" % (sharedir, xmlfile)
 					self.locallist.absorb_xml(xmltree)
 
 		# initialize internals

@@ -241,6 +241,12 @@ class SinglePlayerGame:
 					print "Found single player xml file at %s/%s - including" % (sharedir, xmlfile)
 					self.locallist.absorb_xml(xmltree)
 
+		# verify existence of command paths referred to in local list
+		for t in self.locallist.keys():
+			for s in self.locallist[t].keys():
+				if not os.path.exists(os.path.join(self.locallist[t][s]['cwd'], self.locallist[t][s]['commandstring'].split()[0])):
+					del self.locallist[t][s]
+
 		# initialize internals
 		self.active = False
 		self.sname = ''

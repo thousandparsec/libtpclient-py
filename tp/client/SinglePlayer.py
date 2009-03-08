@@ -244,7 +244,10 @@ class SinglePlayerGame:
 		# verify existence of command paths referred to in local list
 		for t in self.locallist.keys():
 			for s in self.locallist[t].keys():
-				if not os.path.exists(os.path.join(self.locallist[t][s]['cwd'], self.locallist[t][s]['commandstring'].split()[0])):
+				exe = self.locallist[t][s]['commandstring'].split()[0]
+				if not os.path.exists(os.path.join(self.locallist[t][s]['cwd'], exe)):
+					print "Removing %s as command %s not found in %s." % (
+						self.locallist[t][s]['longname'], exe, self.locallist[t][s]['cwd'])
 					del self.locallist[t][s]
 
 		# initialize internals

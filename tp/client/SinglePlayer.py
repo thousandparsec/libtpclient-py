@@ -283,7 +283,7 @@ class SinglePlayerGame:
 					break
 		try:
 			return self.locallist['server'][sname]['ruleset'][rname]
-		except KeyError:
+		except KeyError, e:
 			return None
 
 	def list_servers_with_ruleset(self, rname = None):
@@ -354,7 +354,7 @@ class SinglePlayerGame:
 
 		aiclient = {
 				'name' : ainame,
-				'user' : aiuser.translate(''.join([chr(x) for x in range(256)]),' '),
+				'user' : aiuser,
 				'parameters' : aiparams,
 			}
 		self.opponents.append(aiclient)
@@ -424,6 +424,8 @@ class SinglePlayerGame:
 			# TODO: allow redirection of stdout and stderr
 			self.sproc = Popen(servercmd, cwd = servercwd, shell = True)
 
+			print "Running server with cmd:", servercmd
+
 			# wait for the server to initialize
 			# FIXME: use admin protocol if available to check this (loop)
 			time.sleep(5)
@@ -455,6 +457,8 @@ class SinglePlayerGame:
 					if value is None:
 						continue
 					aicmd += ' ' + self.locallist['aiclient'][aiclient['name']]['parameter'][pname]['commandstring'] % value
+
+				print "Running AI (%s) with cmd: %s" % (aiclient['name'], aicmd)
 
 				# call the control script
 				# TODO: allow redirection stdout and stderr

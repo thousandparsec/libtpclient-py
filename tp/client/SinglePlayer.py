@@ -228,7 +228,7 @@ class SinglePlayerGame:
 					if not xmltree._root.tag == 'tpconfig':
 						continue
 
-					print "Found single player xml file at %s/%s" % (sharedir, xmlfile)
+					print "Found single player XML file: %s" % xmlfile
 					self.locallist.absorb_xml(xmltree)
 
 		# initialize internals

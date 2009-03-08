@@ -347,22 +347,22 @@ class SinglePlayerGame:
 			rname = self.rname
 		return self.locallist['server'][sname]['ruleset'][rname]['parameter']
 
-	def add_opponent(self, ainame, aiuser, aiparams):
+	def add_opponent(self, name, user, parameters):
 		"""\
 		Adds an AI client opponent to the game (before starting).
 
-		@param ainame The name of the AI client.
-		@param aiuser The desired username of the opponent.
-		@param aiparams A dictionary of parameters in the form {'name', 'value'}.
+		@param name The name of the AI client.
+		@param user The desired username of the opponent.
+		@param parameters A dictionary of parameters in the form {'name', 'value'}.
 		"""
 		for aiclient in self.opponents:
-			if aiclient['user'] is aiuser:
+			if aiclient['user'] is user:
 				return False
 
 		aiclient = {
-				'name' : ainame,
-				'user' : aiuser,
-				'parameters' : aiparams,
+				'name' : name,
+				'user' : user,
+				'parameters' : parameters,
 			}
 		self.opponents.append(aiclient)
 

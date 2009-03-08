@@ -504,15 +504,15 @@ class SinglePlayerGame:
 		Internal: formats a parameter value based on type.
 
 		@oaram value The value to format.
-		@param type The target value type (I, S, or B).
+		@param type The target value type (I, S, F, B).
 		@return The formatted value or None.
 		"""
 		if value is None or str(value) == '':
 			return None
 		elif type == 'I':
 			return int(value)
-		elif type == 'S':
-			 return str(value)
+		elif type == 'S' or type == 'F':
+			return str(value)
 		elif type == 'B':
 			return ''
 		else:

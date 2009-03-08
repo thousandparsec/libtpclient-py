@@ -229,7 +229,7 @@ class SinglePlayerGame:
 					if not xmlfile.endswith('xml'):
 						continue
 
-					print "Found xml file at %s/%s" % (sharedir, xmlfile)
+					print "Found xml file at %s" % (xmlfile)
 					try:
 						xmltree = ET.parse(xmlfile)
 					except:

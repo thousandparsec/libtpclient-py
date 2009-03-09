@@ -289,12 +289,38 @@ class SinglePlayerGame:
 					rulesets.append(rname)
 		return rulesets
 
+	def server_info(self, sname = None):
+		"""\
+		Returns information about a server.
+
+		@param sname Server name (optional).
+		@return Information about current or specified server.
+		"""
+		if sname is None:
+			sname = self.sname
+		try:
+			return self.locallist['server'][sname]
+		except KeyError, e:
+			return None
+
+	def aiclient_info(self, ainame = None):
+		"""\
+		Returns information about an AI client.
+
+		@param ainame AI client name.
+		@return Information about specified AI client.
+		"""
+		try:
+			return self.locallist['aiclient'][ainame]
+		except KeyError, e:
+			return None
+
 	def ruleset_info(self, rname = None):
 		"""\
 		Returns information about a ruleset.
 
 		@param rname Ruleset name (optional).
-		@return Current or first found by name ruleset information,
+		@return Information about current or specified ruleset.
 		"""
 		if rname is None:
 			rname = self.rname

@@ -394,6 +394,15 @@ class SinglePlayerGame:
 			sname = self.sname
 		return self.locallist['server'][sname]['parameter']
 
+	def list_aiparams(self, ainame):
+		"""\
+		Returns the parameter list for the specified AI client.
+
+		@param ainame AI client name.
+		@return The AI client parameter list.
+		"""
+		return self.locallist['aiclient'][ainame]['parameter']
+
 	def list_rparams(self, sname = None, rname = None):
 		"""\
 		Returns the parameter list for the current or specified ruleset.
@@ -406,7 +415,7 @@ class SinglePlayerGame:
 		if rname is None:
 			rname = self.rname
 		return self.locallist['server'][sname]['ruleset'][rname]['parameter']
-
+	
 	def add_opponent(self, name, user, parameters):
 		"""\
 		Adds an AI client opponent to the game (before starting).

@@ -276,6 +276,24 @@ class SinglePlayerGame:
 					self.locallist.absorb_xml(xmltree)
 
 	@property
+	def servers(self):
+		"""\
+		Returns a list of available servers.
+
+		@return A list of servers.
+		"""
+		return self.locallist['server'].keys()
+	
+	@property
+	def aiclients(self):
+		"""\
+		Returns a list of available AI clients.
+
+		@return A list of AI clients.
+		"""
+		return self.locallist['aiclient'].keys()
+
+	@property
 	def rulesets(self):
 		"""\
 		Returns a list of available rulesets from all servers.

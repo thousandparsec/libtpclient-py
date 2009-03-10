@@ -586,7 +586,7 @@ class SinglePlayerGame:
 			return int(value)
 		elif type == 'S' or type == 'F':
 			return str(value)
-		elif type == 'B':
+		elif type == 'B' and str(value) == 'True':
 			return ''
 		else:
 			return None

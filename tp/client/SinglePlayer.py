@@ -494,7 +494,10 @@ class SinglePlayerGame:
 				value = self._format_value(value, ruleset['parameter'][pname]['type'])
 				if value is None:
 					continue
-				servercmd += ' ' + ruleset['parameter'][pname]['commandstring'] % value
+                elif value == '':
+                    servercmd += ' ' + ruleset['parameter'][pname]['commandstring']
+                else:
+                    servercmd += ' ' + ruleset['parameter'][pname]['commandstring'] % value
 
 			# start server - call the control script
 			# TODO: allow redirection of stdout and stderr

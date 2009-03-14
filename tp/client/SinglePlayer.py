@@ -32,32 +32,34 @@ if ET is None:
 import version
 
 # where to look for XML definitions and control scripts
+ins_sharepath = []
+inp_sharepath = []
 if sys.platform == 'win32':
 	# look for paths in HKLM\Software\Thousand Parsec\SinglePlayer
 	import _winreg
 	tpsp = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "Software\\Thousand Parsec\\SinglePlayer")
-	sharepath = []
 	try:
 		i = 0
 		while True:
 			name, value, type = _winreg.EnumValue(tpsp, i)
-			sharepath.append(value)
+			ins_sharepath.append(value)
 			i += 1
 	except WindowsError:
 		pass
 else:
 	# use the default unix paths
-	sharepath = ['/usr/share/tp', 
-				 '/usr/share/games/tp', 
-                 '/usr/local/share/tp', 
-                 '/opt/tp', 
-                 os.path.join(version.installpath, 'tp/client/singleplayer')]
+	ins_sharepath = ['/usr/share/tp', 
+		 			 '/usr/share/games/tp', 
+           			 '/usr/local/share/tp', 
+           			 '/opt/tp', 
+           			 os.path.join(version.installpath, 'tp/client/singleplayer'),
+		]
 	# On development platforms also include the directories in the same path as
 	# me.
 	if hasattr(version, 'version_git'):
 		for repo in [os.path.join('..', r) for r in os.listdir('..')]:
 			if os.path.isdir(repo):
-				sharepath.append(repo)
+				inp_sharepath.append(repo)
 
 
 class _Server(dict):
@@ -213,33 +215,9 @@ class SinglePlayerGame:
 	def __init__(self):
 		# build local list
 		self.locallist = LocalList()
-		for sharedir in sharepath:
-			for dir in [sharedir, os.path.join(sharedir, 'servers'), os.path.join(sharedir, 'aiclients')]:
-				if not os.path.isdir(dir):
-					print "Warning search directory %s does not exist" % dir
-					continue
-
-				print "Searching in directory: %s" % dir
-
-				for xmlfile in os.listdir(dir):
-					xmlfile = os.path.join(dir, xmlfile)
-					if not os.path.isfile(xmlfile):
-						continue
-
-					if not xmlfile.endswith('xml'):
-						continue
-
-					print "Found xml file at %s" % (xmlfile)
-					try:
-						xmltree = ET.parse(xmlfile)
-					except:
-						continue
-
-					if not xmltree._root.tag == 'tpconfig':
-						continue
-
-					print "Found single player xml file at %s/%s - including" % (sharedir, xmlfile)
-					self.locallist.absorb_xml(xmltree)
+		self.import_locallist(ins_sharepath, 'installed')
+		if hasattr(version, 'version_git'):
+			self.import_locallist(inp_sharepath, 'inplace')
 
 		# verify existence of command paths referred to in local list
 		for t in self.locallist.keys():
@@ -262,6 +240,59 @@ class SinglePlayerGame:
 		if self.active:
 			self.stop()
 
+	def import_locallist(self, sharepath, type):
+		for sharedir in sharepath:
+			for dir in [sharedir, os.path.join(sharedir, 'servers'), os.path.join(sharedir, 'aiclients')]:
+				if not os.path.isdir(dir):
+					print "Warning search directory %s does not exist" % dir
+					continue
+
+				print "Searching in directory: %s" % dir
+
+				for xmlfile in os.listdir(dir):
+					xmlfile = os.path.join(dir, xmlfile)
+					if not os.path.isfile(xmlfile):
+						continue
+
+					if not xmlfile.endswith('xml'):
+						continue
+
+					print "Found xml file at %s" % (xmlfile)
+					try:
+						xmltree = ET.parse(xmlfile)
+					except:
+						continue
+
+					# ensure this is a tpconfig document
+					if not xmltree._root.tag == 'tpconfig':
+						continue
+
+					# ensure it is of the type we are looking for
+					if (not xmltree._root.attrib.has_key('type') and type != 'installed') \
+					or xmltree._root.attrib.has_key('type') and xmltree._root.attrib['type'] != type:
+						continue
+
+					print "Found single player xml file at %s/%s - including" % (sharedir, xmlfile)
+					self.locallist.absorb_xml(xmltree)
+
+	@property
+	def servers(self):
+		"""\
+		Returns a list of available servers.
+
+		@return A list of servers.
+		"""
+		return self.locallist['server'].keys()
+	
+	@property
+	def aiclients(self):
+		"""\
+		Returns a list of available AI clients.
+
+		@return A list of AI clients.
+		"""
+		return self.locallist['aiclient'].keys()
+
 	@property
 	def rulesets(self):
 		"""\
@@ -277,12 +308,38 @@ class SinglePlayerGame:
 		rulesets.sort()
 		return rulesets
 
+	def server_info(self, sname = None):
+		"""\
+		Returns information about a server.
+
+		@param sname Server name (optional).
+		@return Information about current or specified server.
+		"""
+		if sname is None:
+			sname = self.sname
+		try:
+			return self.locallist['server'][sname]
+		except KeyError, e:
+			return None
+
+	def aiclient_info(self, ainame = None):
+		"""\
+		Returns information about an AI client.
+
+		@param ainame AI client name.
+		@return Information about specified AI client.
+		"""
+		try:
+			return self.locallist['aiclient'][ainame]
+		except KeyError, e:
+			return None
+
 	def ruleset_info(self, rname = None):
 		"""\
 		Returns information about a ruleset.
 
 		@param rname Ruleset name (optional).
-		@return Current or first found by name ruleset information,
+		@return Information about current or specified ruleset.
 		"""
 		if rname is None:
 			rname = self.rname
@@ -340,6 +397,15 @@ class SinglePlayerGame:
 			sname = self.sname
 		return self.locallist['server'][sname]['parameter']
 
+	def list_aiparams(self, ainame):
+		"""\
+		Returns the parameter list for the specified AI client.
+
+		@param ainame AI client name.
+		@return The AI client parameter list.
+		"""
+		return self.locallist['aiclient'][ainame]['parameter']
+
 	def list_rparams(self, sname = None, rname = None):
 		"""\
 		Returns the parameter list for the current or specified ruleset.
@@ -352,7 +418,7 @@ class SinglePlayerGame:
 		if rname is None:
 			rname = self.rname
 		return self.locallist['server'][sname]['ruleset'][rname]['parameter']
-
+	
 	def add_opponent(self, name, user, parameters):
 		"""\
 		Adds an AI client opponent to the game (before starting).
@@ -400,14 +466,17 @@ class SinglePlayerGame:
 				servercwd = None
 
 			# start server - create server command line
-			servercmd = server['commandstring'] % {
-						'rname': self.rname,
-						'port': port,
-					}
+			servercmd = server['commandstring']
 
 			# start server - add forced parameters to command line
 			for forced in server['forced']:
 				servercmd += ' ' + forced
+
+			# start server - set ruleset and port
+			servercmd = servercmd % {
+						'rname' : self.rname,
+						'port' : port,
+					}
 
 			# start server - add regular parameters to command line
 			for pname in server['parameter'].keys():
@@ -431,11 +500,17 @@ class SinglePlayerGame:
 				value = self._format_value(value, ruleset['parameter'][pname]['type'])
 				if value is None:
 					continue
-				servercmd += ' ' + ruleset['parameter'][pname]['commandstring'] % value
+				elif value == '':
+					servercmd += ' ' + ruleset['parameter'][pname]['commandstring']
+				else:
+					servercmd += ' ' + ruleset['parameter'][pname]['commandstring'] % value
 
 			# start server - call the control script
 			# TODO: allow redirection of stdout and stderr
-			self.sproc = Popen(servercmd, cwd = servercwd, shell = True)
+			try:
+				self.sproc = Popen(servercmd, cwd = servercwd, shell = True)
+			except OSError, e:
+				raise InitError
 
 			print "Running server with cmd:", servercmd
 
@@ -451,15 +526,18 @@ class SinglePlayerGame:
 					aicwd = None
 
 				# create ai client command line
-				aicmd = self.locallist['aiclient'][aiclient['name']]['commandstring'] % {
-							'port': port,
-							'rname': self.rname,
-							'user': aiclient['user'],
-						}
+				aicmd = self.locallist['aiclient'][aiclient['name']]['commandstring']
 				
 				# add forced parameters to command line
 				for forced in self.locallist['aiclient'][aiclient['name']]['forced']:
 					aicmd += ' ' + forced
+
+				# set port, ruleset and username
+				aicmd = aicmd % {
+						'port' : port,
+						'rname' : self.rname,
+						'user' : aiclient['user'],
+					}
 
 				# add regular parameters to command line
 				for pname in self.locallist['aiclient'][aiclient['name']]['parameter'].keys():
@@ -475,10 +553,21 @@ class SinglePlayerGame:
 
 				# call the control script
 				# TODO: allow redirection stdout and stderr
-				aiclient['proc'] = Popen(aicmd, cwd = aicwd, shell = True)
+				try:
+					aiclient['proc'] = Popen(aicmd, cwd = aicwd, shell = True)
+				except OSError, e:
+					raise InitError
 
 			# set active flag
 			self.active = True
+
+			# ensure that processes stay alive
+			time.sleep(2)
+			if not self.sproc.poll() is None:
+				raise InitError
+			for aiclient in self.opponents:
+				if not aiclient['proc'].poll() is None:
+					raise InitError
 
 		except InitError, e:
 			print e
@@ -497,13 +586,19 @@ class SinglePlayerGame:
 
 		# stop server
 		if self.sname != '':
-			self.sproc.kill()
+			try:
+				self.sproc.kill()
+			except OSError, e:
+				pass
 			self.sname = ''
 			self.rname = ''
 
 		# stop AI clients
 		for aiclient in self.opponents:
-			aiclient['proc'].kill()
+			try:
+				aiclient['proc'].kill()
+			except OSError, e:
+				pass
 		self.opponents = []
 
 		# reset active flag
@@ -523,7 +618,7 @@ class SinglePlayerGame:
 			return int(value)
 		elif type == 'S' or type == 'F':
 			return str(value)
-		elif type == 'B':
+		elif type == 'B' and str(value) == 'True':
 			return ''
 		else:
 			return None

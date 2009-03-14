@@ -504,7 +504,10 @@ class SinglePlayerGame:
 
 			# start server - call the control script
 			# TODO: allow redirection of stdout and stderr
-			self.sproc = Popen(servercmd, cwd = servercwd, shell = True)
+			try:
+				self.sproc = Popen(servercmd, cwd = servercwd, shell = True)
+			except OSError, e:
+				raise InitError
 
 			print "Running server with cmd:", servercmd
 
@@ -547,10 +550,21 @@ class SinglePlayerGame:
 
 				# call the control script
 				# TODO: allow redirection stdout and stderr
-				aiclient['proc'] = Popen(aicmd, cwd = aicwd, shell = True)
+				try:
+					aiclient['proc'] = Popen(aicmd, cwd = aicwd, shell = True)
+				except OSError, e:
+					raise InitError
 
 			# set active flag
 			self.active = True
+
+			# ensure that processes stay alive
+			time.sleep(2)
+			if not self.sproc.poll() is None:
+				raise InitError
+			for aiclient in self.opponents:
+				if not aiclient['proc'].poll() is None:
+					raise InitError
 
 		except InitError, e:
 			print e
@@ -569,13 +583,19 @@ class SinglePlayerGame:
 
 		# stop server
 		if self.sname != '':
-			self.sproc.kill()
+			try:
+				self.sproc.kill()
+			except OSError, e:
+				pass
 			self.sname = ''
 			self.rname = ''
 
 		# stop AI clients
 		for aiclient in self.opponents:
-			aiclient['proc'].kill()
+			try:
+				aiclient['proc'].kill()
+			except OSError, e:
+				pass
 		self.opponents = []
 
 		# reset active flag

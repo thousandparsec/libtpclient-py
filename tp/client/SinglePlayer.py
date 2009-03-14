@@ -463,14 +463,17 @@ class SinglePlayerGame:
 				servercwd = None
 
 			# start server - create server command line
-			servercmd = server['commandstring'] % {
-						'rname': self.rname,
-						'port': port,
-					}
+			servercmd = server['commandstring']
 
 			# start server - add forced parameters to command line
 			for forced in server['forced']:
 				servercmd += ' ' + forced
+
+			# start server - set ruleset and port
+			servercmd = servercmd % {
+						'rname' : self.rname,
+						'port' : port,
+					}
 
 			# start server - add regular parameters to command line
 			for pname in server['parameter'].keys():
@@ -517,15 +520,18 @@ class SinglePlayerGame:
 					aicwd = None
 
 				# create ai client command line
-				aicmd = self.locallist['aiclient'][aiclient['name']]['commandstring'] % {
-							'port': port,
-							'rname': self.rname,
-							'user': aiclient['user'],
-						}
+				aicmd = self.locallist['aiclient'][aiclient['name']]['commandstring']
 				
 				# add forced parameters to command line
 				for forced in self.locallist['aiclient'][aiclient['name']]['forced']:
 					aicmd += ' ' + forced
+
+				# set port, ruleset and username
+				aicmd = aicmd % {
+						'port' : port,
+						'rname' : self.rname,
+						'user' : aiclient['user'],
+					}
 
 				# add regular parameters to command line
 				for pname in self.locallist['aiclient'][aiclient['name']]['parameter'].keys():

@@ -274,6 +274,7 @@ class SinglePlayerGame:
 			for rname in self.locallist['server'][sname]['ruleset'].keys():
 				if rname not in rulesets:
 					rulesets.append(rname)
+		rulesets.sort()
 		return rulesets
 
 	def ruleset_info(self, rname = None):
@@ -309,6 +310,7 @@ class SinglePlayerGame:
 		for sname in self.locallist['server'].keys():
 			if self.locallist['server'][sname]['ruleset'].has_key(rname):
 				servers.append(sname)
+		servers.sort()
 		return servers
 
 	def list_aiclients_with_ruleset(self, rname = None):
@@ -324,6 +326,7 @@ class SinglePlayerGame:
 		for ainame in self.locallist['aiclient'].keys():
 			if rname in self.locallist['aiclient'][ainame]['rules']:
 				aiclients.append(ainame)
+		aiclients.sort()
 		return aiclients
 
 	def list_sparams(self, sname = None):

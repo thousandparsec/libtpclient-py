@@ -194,6 +194,8 @@ class CallThread(threading.Thread):
 		except Exception, e:
 			self.error(e)
 
+		self.Cleanup()
+
 	def every(self):
 		"""\
 		Called every time th run goes around a loop.

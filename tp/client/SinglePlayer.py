@@ -446,6 +446,9 @@ class SinglePlayerGame:
 
 		@return Port number (OK to connect) or False.
 		"""
+		import atexit
+		atexit.register(self.stop)
+
 		if self.active:
 			return
 
@@ -510,7 +513,7 @@ class SinglePlayerGame:
 			try:
 				self.sproc = Popen(servercmd, cwd = servercwd, shell = True)
 			except OSError, e:
-				raise InitError
+				raise InitError(e)
 
 			print "Running server with cmd:", servercmd
 
@@ -556,7 +559,7 @@ class SinglePlayerGame:
 				try:
 					aiclient['proc'] = Popen(aicmd, cwd = aicwd, shell = True)
 				except OSError, e:
-					raise InitError
+					raise InitError(e)
 
 			# set active flag
 			self.active = True

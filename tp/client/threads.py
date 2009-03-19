@@ -415,7 +415,7 @@ class NetworkThread(CallThread):
 			games = []
 		else:
 			for game in games:
-				callback("connecting", "progress", _("Found %s playing %s (%s)") % (game.name, game.rule, game.rulever))
+				callback("connecting", "progress", _("Found %(game)s playing %(ruleset)s (%(version)s)") % {'game': game.name, 'ruleset': game.rule, 'version': game.rulever})
 
 		callback("connecting", "downloaded", _("Got the supported features..."), amount=1)
 

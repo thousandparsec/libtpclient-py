@@ -1,3 +1,11 @@
+"""\
+Single player system support module.
+
+@author: Aaron Mavrinac (ezod)
+@organization: Thousand Parsec
+@license: GPL-2
+"""
+
 # Python imports
 import os
 import sys
@@ -63,6 +71,9 @@ else:
 
 
 class _Server(dict):
+	"""\
+	Dictionary subclass for server descriptions.
+	"""
 	def __init__(self):
 		for k in ['longname', 'version', 'description', 'commandstring', 'cwd']:
 			self[k] = ''
@@ -72,6 +83,9 @@ class _Server(dict):
 		super(_Server, self).__init__()
 	
 class _AIClient(dict):
+	"""\
+	Dictionary subclass for AI client descriptions.
+	"""
 	def __init__(self):
 		for k in ['longname', 'version', 'description', 'commandstring', 'cwd']:
 			self[k] = ''
@@ -81,6 +95,9 @@ class _AIClient(dict):
 		super(_AIClient, self).__init__()
 
 class _Ruleset(dict):
+	"""\
+	Dictionary subclass for ruleset descriptions.
+	"""
 	def __init__(self):
 		for k in ['longname', 'version', 'description']:
 			self[k] = ''
@@ -89,6 +106,9 @@ class _Ruleset(dict):
 		super(_Ruleset, self).__init__()
 
 class _Parameter(dict):
+	"""\
+	Dictionary subclass for parameter descriptions.
+	"""
 	def __init__(self):
 		for el in ['type', 'longname', 'description', 'default', 'commandstring']:
 			self[el] = ''
@@ -96,6 +116,7 @@ class _Parameter(dict):
 
 class LocalList(dict):
 	"""\
+	Local list of servers, rulesets, and AI clients.
 	"""
 
 	def __init__(self):
@@ -104,6 +125,18 @@ class LocalList(dict):
 		super(LocalList, self).__init__()
 	
 	def absorb_xml(self, tree, d = None):
+		"""\
+		Recursively import an XML element tree into the local list. When called
+		externally, the tree passed in should be an entire XML file parsed from
+		the root, and the d parameter should not be specified. This implementation
+		reads documents using the tpconfig DTD, and the classdict classes are the
+		major (i.e. with sub-elements) element types specified in that DTD.
+
+		@param tree: The XML element tree to import.
+		@type tree: L{ET.ElementTree}
+		@param d: A dictionary subclass instance for this type of tree (optional).
+		@type d: C{dict}
+		"""
 		if d is None:
 			d = self
 
@@ -149,6 +182,9 @@ class DownloadList(dict):
 	def get_list(self):
 		"""\
 		Fetch and parse the XML list of available downloads from TP web.
+
+		@return: True if successful, false otherwise.
+		@rtype: C{bool}
 		"""
 		try:
 			dlxml = urllib.urlopen(self.urlxml)
@@ -178,6 +214,11 @@ class DownloadList(dict):
 	def list_servers_with_ruleset(self, rname):
 		"""\
 		Returns a list of available servers supporting the specified ruleset.
+
+		@param rname: The ruleset name.
+		@type rname: C{string}
+		@return: A list of servers supporting the ruleset.
+		@rtype: C{list} of C{string}
 		"""
 		servers = []
 		for sname in self['server'].keys():
@@ -188,6 +229,11 @@ class DownloadList(dict):
 	def list_aiclients_with_ruleset(self, rname):
 		"""\
 		Returns a list of available AI clients supporting the specified ruleset.
+
+		@param rname: The ruleset name.
+		@type rname: C{string}
+		@return: A list of AI clients supporting the ruleset.
+		@rtype: C{list} of C{string}
 		"""
 		aiclients = []
 		for ainame in self['ai'].keys():
@@ -198,6 +244,11 @@ class DownloadList(dict):
 	def linkurl(self, component = None):
 		"""\
 		Returns the download page URL, optionally for a specific component type.
+
+		@param component: The component type (optional).
+		@type component: C{string}
+		@return: A download URL (for component type or all).
+		@rtype: C{string}
 		"""
 		if component in self.keys():
 			return self.urldlp + '?category=' + component
@@ -205,11 +256,15 @@ class DownloadList(dict):
 			return self.urldlp
 
 class InitError(Exception):
+	"""\
+	Generic initialization error, thrown to allow cleanup in certain situations.
+	"""
 	pass
 
 class SinglePlayerGame:
 	"""\
-	A single-player game manager.
+	The single-player game manager. This is the object which should be
+	instantiated externally to create a single player game.
 	"""
 
 	def __init__(self):
@@ -241,6 +296,14 @@ class SinglePlayerGame:
 			self.stop()
 
 	def import_locallist(self, sharepath, type):
+		"""\
+		Build the local list from various XML files on the system.
+
+		@param sharepath: A list of search paths for single player XML files.
+		@type sharepath: C{list} of C{string}
+		@param type: The type of files to import ('installed' or 'inplace').
+		@type type: C{string}
+		"""
 		for sharedir in sharepath:
 			for dir in [sharedir, os.path.join(sharedir, 'servers'), os.path.join(sharedir, 'aiclients')]:
 				if not os.path.isdir(dir):
@@ -280,7 +343,8 @@ class SinglePlayerGame:
 		"""\
 		Returns a list of available servers.
 
-		@return A list of servers.
+		@return: A list of servers.
+		@rtype: C{list} of C{string}
 		"""
 		return self.locallist['server'].keys()
 	
@@ -289,7 +353,8 @@ class SinglePlayerGame:
 		"""\
 		Returns a list of available AI clients.
 
-		@return A list of AI clients.
+		@return: A list of AI clients.
+		@rtype: C{list} of C{string}
 		"""
 		return self.locallist['aiclient'].keys()
 
@@ -298,7 +363,8 @@ class SinglePlayerGame:
 		"""\
 		Returns a list of available rulesets from all servers.
 
-		@return A list of rulesets.
+		@return: A list of rulesets.
+		@rtype: C{list} of C{string}
 		"""
 		rulesets = []
 		for sname in self.locallist['server'].keys():
@@ -312,8 +378,10 @@ class SinglePlayerGame:
 		"""\
 		Returns information about a server.
 
-		@param sname Server name (optional).
+		@param sname: Server name (optional).
+		@type sname: C{string}
 		@return Information about current or specified server.
+		@rtype: C{dict}
 		"""
 		if sname is None:
 			sname = self.sname
@@ -326,8 +394,10 @@ class SinglePlayerGame:
 		"""\
 		Returns information about an AI client.
 
-		@param ainame AI client name.
-		@return Information about specified AI client.
+		@param ainame: AI client name.
+		@type ainame: C{string}
+		@return: Information about specified AI client.
+		@rtype: C{dict}
 		"""
 		try:
 			return self.locallist['aiclient'][ainame]
@@ -358,8 +428,10 @@ class SinglePlayerGame:
 		"""\
 		Returns a list of servers supporting the current or specified ruleset.
 
-		@param rname Ruleset name (optional).
-		@return A list of servers.
+		@param rname: Ruleset name (optional).
+		@type rname: C{string}
+		@return: A list of servers.
+		@rtype: C{list} of C{string}
 		"""
 		if rname is None:
 			rname = self.rname
@@ -374,8 +446,10 @@ class SinglePlayerGame:
 		"""\
 		Returns a list of AI clients supporting the current or specified ruleset.
 
-		@param rname Ruleset name (optional).
-		@return A list of AI clients.
+		@param rname: Ruleset name (optional).
+		@type rname: C{string}
+		@return: A list of AI clients.
+		@rtype: C{list} of C{string}
 		"""
 		if rname is None:
 			rname = self.rname
@@ -390,8 +464,10 @@ class SinglePlayerGame:
 		"""\
 		Returns the parameter list for the current or specified server.
 
-		@param sname Server name (optional).
-		@return The server parameter list.
+		@param sname: Server name (optional).
+		@type sname: C{string}
+		@return: The server parameter list.
+		@rtype: C{dict}
 		"""
 		if sname is None:
 			sname = self.sname
@@ -401,8 +477,10 @@ class SinglePlayerGame:
 		"""\
 		Returns the parameter list for the specified AI client.
 
-		@param ainame AI client name.
-		@return The AI client parameter list.
+		@param ainame: AI client name.
+		@type ainame: C{string}
+		@return: The AI client parameter list.
+		@rtype: C{dict}
 		"""
 		return self.locallist['aiclient'][ainame]['parameter']
 
@@ -410,8 +488,10 @@ class SinglePlayerGame:
 		"""\
 		Returns the parameter list for the current or specified ruleset.
 
-		@param rname Ruleset name (optional).
-		@return The ruleset parameter list.
+		@param rname: Ruleset name (optional).
+		@type rname: C{string}
+		@return: The ruleset parameter list.
+		@rtype: C{dict}
 		"""
 		if sname is None:
 			sname = self.sname
@@ -423,9 +503,14 @@ class SinglePlayerGame:
 		"""\
 		Adds an AI client opponent to the game (before starting).
 
-		@param name The name of the AI client.
-		@param user The desired username of the opponent.
-		@param parameters A dictionary of parameters in the form {'name', 'value'}.
+		@param name: The name of the AI client.
+		@type name: C{string}
+		@param user: The desired username of the opponent.
+		@type user: C{string}
+		@param parameters: A dictionary of parameters in the form {'name', 'value'}.
+		@type parameters: C{dict}
+		@return: True if successful, false otherwise.
+		@rtype: C{bool}
 		"""
 		for aiclient in self.opponents:
 			if aiclient['user'] is user:
@@ -444,7 +529,8 @@ class SinglePlayerGame:
 		"""\
 		Starts the server and AI clients.
 
-		@return Port number (OK to connect) or False.
+		@return: Port number (OK to connect) or False.
+		@rtype: C{int}
 		"""
 		import atexit
 		atexit.register(self.stop)
@@ -611,9 +697,11 @@ class SinglePlayerGame:
 		"""\
 		Internal: formats a parameter value based on type.
 
-		@oaram value The value to format.
-		@param type The target value type (I, S, F, B).
-		@return The formatted value or None.
+		@oaram value: The value to format.
+		@type value: C{string}
+		@param type: The target value type (I, S, F, B).
+		@type type: C{string}
+		@return: The formatted value or None.
 		"""
 		if value is None or str(value) == '':
 			return None

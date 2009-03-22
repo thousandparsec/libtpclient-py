@@ -12,7 +12,7 @@ import sys
 import time
 import socket
 import urllib
-from killableprocess import Popen
+from subprocess import Popen
 
 # find an elementtree implementation
 ET = None

@@ -49,7 +49,7 @@ if sys.platform == 'win32':
 	try:
 		i = 0
 		while True:
-			name, value, type = _winreg.EnumValue(tpsp, i)
+			name, value, t = _winreg.EnumValue(tpsp, i)
 			ins_sharepath.append(value)
 			i += 1
 	except WindowsError:
@@ -295,14 +295,14 @@ class SinglePlayerGame:
 		if self.active:
 			self.stop()
 
-	def import_locallist(self, sharepath, type):
+	def import_locallist(self, sharepath, stype):
 		"""\
 		Build the local list from various XML files on the system.
 
 		@param sharepath: A list of search paths for single player XML files.
 		@type sharepath: C{list} of C{string}
-		@param type: The type of files to import ('installed' or 'inplace').
-		@type type: C{string}
+		@param stype: The type of files to import ('installed' or 'inplace').
+		@type stype: C{string}
 		"""
 		for sharedir in sharepath:
 			for dir in [sharedir, os.path.join(sharedir, 'servers'), os.path.join(sharedir, 'aiclients')]:
@@ -331,8 +331,8 @@ class SinglePlayerGame:
 						continue
 
 					# ensure it is of the type we are looking for
-					if (not xmltree._root.attrib.has_key('type') and type != 'installed') \
-					or xmltree._root.attrib.has_key('type') and xmltree._root.attrib['type'] != type:
+					if (not xmltree._root.attrib.has_key('type') and stype != 'installed') \
+					or xmltree._root.attrib.has_key('type') and xmltree._root.attrib['type'] != stype:
 						continue
 
 					print "Found single player xml file at %s/%s - including" % (sharedir, xmlfile)
@@ -693,23 +693,23 @@ class SinglePlayerGame:
 		# reset active flag
 		self.active = False
 
-	def _format_value(self, value, type):
+	def _format_value(self, value, ptype):
 		"""\
 		Internal: formats a parameter value based on type.
 
 		@oaram value: The value to format.
 		@type value: C{string}
-		@param type: The target value type (I, S, F, B).
-		@type type: C{string}
+		@param ptype: The target value type (I, S, F, B).
+		@type ptype: C{string}
 		@return: The formatted value or None.
 		"""
 		if value is None or str(value) == '':
 			return None
-		elif type == 'I':
+		elif ptype == 'I':
 			return int(value)
-		elif type == 'S' or type == 'F':
+		elif ptype == 'S' or type == 'F':
 			return str(value)
-		elif type == 'B' and str(value) == 'True':
+		elif ptype == 'B' and str(value) == 'True':
 			return ''
 		else:
 			return None

@@ -278,8 +278,8 @@ class SinglePlayerGame:
 		for t in self.locallist.keys():
 			for s in self.locallist[t].keys():
 				exe = self.locallist[t][s]['commandstring'].split()[0]
-				if not os.path.exists(os.path.join(self.locallist[t][s]['cwd'], exe)) \
-                or (sys.platform == 'win32' and not os.path.exists(os.path.join(self.locallist[t][s]['cwd'], exe + '.exe'))):
+				if not (os.path.exists(os.path.join(self.locallist[t][s]['cwd'], exe)) \
+                or os.path.exists(os.path.join(self.locallist[t][s]['cwd'], exe + '.exe'))):
 					print "Removing %s as command %s not found in %s." % (
 						self.locallist[t][s]['longname'], exe, self.locallist[t][s]['cwd'])
 					del self.locallist[t][s]

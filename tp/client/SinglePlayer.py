@@ -278,10 +278,18 @@ class SinglePlayerGame:
 		for t in self.locallist.keys():
 			for s in self.locallist[t].keys():
 				exe = self.locallist[t][s]['commandstring'].split()[0]
-				if not (os.path.exists(os.path.join(self.locallist[t][s]['cwd'], exe)) \
-                or os.path.exists(os.path.join(self.locallist[t][s]['cwd'], exe + '.exe'))):
-					print "Removing %s as command %s not found in %s." % (
-						self.locallist[t][s]['longname'], exe, self.locallist[t][s]['cwd'])
+				found = False
+				if self.locallist[t][s]['cwd']:
+					if os.path.exists(os.path.join(self.locallist[t][s]['cwd'], exe)) \
+					or os.path.exists(os.path.join(self.locallist[t][s]['cwd'], exe + '.exe')):
+						found = True
+				else:
+					for dir in os.environ.get('PATH').split(':'):
+						if os.path.exists(os.path.join(dir, exe)):
+							found = True
+				if not found:
+					print "Removing %s as command %s was not found." % (
+						self.locallist[t][s]['longname'], exe)
 					del self.locallist[t][s]
 
 		# initialize internals

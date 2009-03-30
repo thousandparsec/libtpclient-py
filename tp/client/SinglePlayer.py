@@ -287,6 +287,7 @@ class SinglePlayerGame:
 					for dir in os.environ.get('PATH').split(':'):
 						if os.path.exists(os.path.join(dir, exe)):
 							found = True
+							break
 				if not found:
 					print "Removing %s as command %s was not found." % (
 						self.locallist[t][s]['longname'], exe)
@@ -606,7 +607,7 @@ class SinglePlayerGame:
 			# start server - call the control script
 			# TODO: allow redirection of stdout and stderr
 			try:
-				self.sproc = Popen(servercmd, cwd = servercwd, shell = True)
+				self.sproc = Popen(servercmd.split(), cwd = servercwd)
 			except OSError, e:
 				raise InitError(e)
 
@@ -652,7 +653,7 @@ class SinglePlayerGame:
 				# call the control script
 				# TODO: allow redirection stdout and stderr
 				try:
-					aiclient['proc'] = Popen(aicmd, cwd = aicwd, shell = True)
+					aiclient['proc'] = Popen(aicmd.split(), cwd = aicwd)
 				except OSError, e:
 					raise InitError(e)
 

@@ -12,7 +12,6 @@ import sys
 import time
 import socket
 import urllib
-from subprocess import Popen
 
 # find an elementtree implementation
 ET = None
@@ -36,38 +35,11 @@ except ImportError, e:
 if ET is None:
     raise ImportError(str(errors))
 
+# import from local 2.6 subprocess module
+from subprocess import Popen
+
 # local imports
 import version
-
-# where to look for XML definitions and control scripts
-ins_sharepath = []
-inp_sharepath = []
-if sys.platform == 'win32':
-	# look for paths in HKLM\Software\Thousand Parsec\SinglePlayer
-	try:
-		import _winreg
-		tpsp = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "Software\\Thousand Parsec\\SinglePlayer")
-		i = 0
-		while True:
-			name, value, t = _winreg.EnumValue(tpsp, i)
-			ins_sharepath.append(value)
-			i += 1
-	except WindowsError:
-		pass
-else:
-	# use the default unix paths
-	ins_sharepath = ['/usr/share/tp', 
-		 			 '/usr/share/games/tp', 
-           			 '/usr/local/share/tp', 
-           			 '/opt/tp', 
-           			 os.path.join(version.installpath, 'tp/client/singleplayer'),
-		]
-	# On development platforms also include the directories in the same path as
-	# me.
-	if hasattr(version, 'version_git'):
-		for repo in [os.path.join('..', r) for r in os.listdir('..')]:
-			if os.path.isdir(repo):
-				inp_sharepath.append(repo)
 
 
 class _Server(dict):
@@ -80,7 +52,6 @@ class _Server(dict):
 		self['forced'] = []
 		self['parameter'] = {}
 		self['ruleset'] = {}
-		super(_Server, self).__init__()
 	
 class _AIClient(dict):
 	"""\
@@ -92,7 +63,6 @@ class _AIClient(dict):
 		self['rules'] = []
 		self['forced'] = []
 		self['parameter'] = {}
-		super(_AIClient, self).__init__()
 
 class _Ruleset(dict):
 	"""\
@@ -103,7 +73,6 @@ class _Ruleset(dict):
 			self[k] = ''
 		self['forced'] = []
 		self['parameter'] = {}
-		super(_Ruleset, self).__init__()
 
 class _Parameter(dict):
 	"""\
@@ -112,7 +81,7 @@ class _Parameter(dict):
 	def __init__(self):
 		for el in ['type', 'longname', 'description', 'default', 'commandstring']:
 			self[el] = ''
-		super(_Parameter, self).__init__()
+
 
 class LocalList(dict):
 	"""\
@@ -120,11 +89,92 @@ class LocalList(dict):
 	"""
 
 	def __init__(self):
+		"""\
+		Constructor.
+		"""
 		self['server'] = {}
 		self['aiclient'] = {}
-		super(LocalList, self).__init__()
-	
-	def absorb_xml(self, tree, d = None):
+
+		# look for installed single player XML files
+		ins_sharepath = []
+		if sys.platform == 'win32':
+			try:
+				import _winreg
+				tpsp = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "Software\\Thousand Parsec\\SinglePlayer")
+				i = 0
+				while True:
+					name, value, t = _winreg.EnumValue(tpsp, i)
+					ins_sharepath.append(value)
+					i += 1
+			except WindowsError:
+				pass
+		else:
+			ins_sharepath = ['/usr/share/tp', 
+							 '/usr/share/games/tp', 
+							 '/usr/local/share/tp', 
+							 '/opt/tp', 
+							 os.path.join(version.installpath, 'tp/client/singleplayer'),
+				]
+		self.build('installed', ins_sharepath)
+
+		# look for inplace single player XML files
+		if hasattr(version, 'version_git'):
+			inp_sharepath = []
+			for repo in [os.path.join('..', r) for r in os.listdir('..')]:
+				if os.path.isdir(repo):
+					inp_sharepath.append(repo)
+			self.build('inplace', inp_sharepath)
+
+	def build(self, stype, sharepath):
+		"""\
+		Build the local list from single player XML files.
+
+		@param stype: The type of component (installed or inplace).
+		@type stype: C{string}
+		@param sharepath: A list of paths to search for XML files.
+		@type sharepath: C{list} of C{string}
+		"""
+		for dir in sharepath:
+			dir = os.path.abspath(dir)
+			if not os.path.isdir(dir):
+				continue
+
+			print "Searching in %s..." % dir
+
+			for xmlfile in os.listdir(dir):
+				xmlfile = os.path.join(dir, xmlfile)
+				if not os.path.isfile(xmlfile):
+					continue
+				if not xmlfile.endswith('xml'):
+					continue
+
+				try:
+					xmltree = ET.parse(xmlfile)
+				# FIXME: catch actual parsing exceptions (ExpatError?)
+				except:
+					continue
+
+				# ensure this is a tpconfig document
+				if xmltree._root.tag != 'tpconfig':
+					continue
+
+				# ensure it is of the type we are looking for
+				if (not xmltree._root.attrib.has_key('type') and stype != 'installed') \
+				or xmltree._root.attrib.has_key('type') and xmltree._root.attrib['type'] != stype:
+					continue
+
+				print "Including %s." % xmlfile
+				self.absorb_xml(xmltree, dir)
+
+		# verify existence of command paths referred to in local list
+		for t in self.keys():
+			for s in self[t].keys():
+				exe = os.path.join(self[t][s]['cwd'], self[t][s]['commandstring'].split()[0])
+				if not (os.path.exists(exe) or os.path.exists(exe + '.exe')):
+					print "Removing %s: command %s not found." % (self[t][s]['longname'], exe)
+					del self[t][s]
+
+	def absorb_xml(self, tree, dir, d = None):
 		"""\
 		Recursively import an XML element tree into the local list. When called
 		externally, the tree passed in should be an entire XML file parsed from
@@ -134,6 +184,8 @@ class LocalList(dict):
 
 		@param tree: The XML element tree to import.
 		@type tree: L{ET.ElementTree}
+		@param dir: The absolute path of the source XML file.
+		@type dir: C{string}
 		@param d: A dictionary subclass instance for this type of tree (optional).
 		@type d: C{dict}
 		"""
@@ -152,7 +204,7 @@ class LocalList(dict):
 					sname = s.attrib['name']
 					if not d[k].has_key(sname):
 						d[k][sname] = classdict[k]()
-					self.absorb_xml(s, d[k][sname])
+					self.absorb_xml(s, dir, d[k][sname])
 			elif type(d[k]) is list:
 				for e in tree.findall(k):
 					d[k].append(e.text)
@@ -161,6 +213,8 @@ class LocalList(dict):
 					d[k] = tree.attrib[k]
 				elif tree.find(k) is not None:
 					d[k] = tree.find(k).text
+					if k == 'cwd':
+						d[k] = os.path.join(dir, d[k])
 
 
 class DownloadList(dict):
@@ -171,7 +225,6 @@ class DownloadList(dict):
 	def __init__(self,
 				 urlxml = 'http://thousandparsec.net/tp/downloads.xml',
 				 urldlp = 'http://thousandparsec.net/tp/downloads.php'):
-		super(DownloadList, self).__init__()
 		self.urlxml = urlxml
 		self.urldlp = urldlp
 		self['server'] = {}
@@ -270,28 +323,6 @@ class SinglePlayerGame:
 	def __init__(self):
 		# build local list
 		self.locallist = LocalList()
-		self.import_locallist(ins_sharepath, 'installed')
-		if hasattr(version, 'version_git'):
-			self.import_locallist(inp_sharepath, 'inplace')
-
-		# verify existence of command paths referred to in local list
-		for t in self.locallist.keys():
-			for s in self.locallist[t].keys():
-				exe = self.locallist[t][s]['commandstring'].split()[0]
-				found = False
-				if self.locallist[t][s]['cwd']:
-					if os.path.exists(os.path.join(self.locallist[t][s]['cwd'], exe)) \
-					or os.path.exists(os.path.join(self.locallist[t][s]['cwd'], exe + '.exe')):
-						found = True
-				else:
-					for dir in os.environ.get('PATH').split(':'):
-						if os.path.exists(os.path.join(dir, exe)):
-							found = True
-							break
-				if not found:
-					print "Removing %s as command %s was not found." % (
-						self.locallist[t][s]['longname'], exe)
-					del self.locallist[t][s]
 
 		# initialize internals
 		self.active = False
@@ -304,49 +335,6 @@ class SinglePlayerGame:
 	def __del__(self):
 		if self.active:
 			self.stop()
-
-	def import_locallist(self, sharepath, stype):
-		"""\
-		Build the local list from various XML files on the system.
-
-		@param sharepath: A list of search paths for single player XML files.
-		@type sharepath: C{list} of C{string}
-		@param stype: The type of files to import ('installed' or 'inplace').
-		@type stype: C{string}
-		"""
-		for sharedir in sharepath:
-			for dir in [sharedir, os.path.join(sharedir, 'servers'), os.path.join(sharedir, 'aiclients')]:
-				if not os.path.isdir(dir):
-					print "Warning search directory %s does not exist" % dir
-					continue
-
-				print "Searching in directory: %s" % dir
-
-				for xmlfile in os.listdir(dir):
-					xmlfile = os.path.join(dir, xmlfile)
-					if not os.path.isfile(xmlfile):
-						continue
-
-					if not xmlfile.endswith('xml'):
-						continue
-
-					print "Found xml file at %s" % (xmlfile)
-					try:
-						xmltree = ET.parse(xmlfile)
-					except:
-						continue
-
-					# ensure this is a tpconfig document
-					if not xmltree._root.tag == 'tpconfig':
-						continue
-
-					# ensure it is of the type we are looking for
-					if (not xmltree._root.attrib.has_key('type') and stype != 'installed') \
-					or xmltree._root.attrib.has_key('type') and xmltree._root.attrib['type'] != stype:
-						continue
-
-					print "Found single player xml file at %s/%s - including" % (sharedir, xmlfile)
-					self.locallist.absorb_xml(xmltree)
 
 	@property
 	def servers(self):

@@ -44,9 +44,9 @@ ins_sharepath = []
 inp_sharepath = []
 if sys.platform == 'win32':
 	# look for paths in HKLM\Software\Thousand Parsec\SinglePlayer
-	import _winreg
-	tpsp = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "Software\\Thousand Parsec\\SinglePlayer")
 	try:
+		import _winreg
+		tpsp = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "Software\\Thousand Parsec\\SinglePlayer")
 		i = 0
 		while True:
 			name, value, t = _winreg.EnumValue(tpsp, i)

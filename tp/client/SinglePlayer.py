@@ -553,7 +553,7 @@ class SinglePlayerGame:
 				servercwd = None
 
 			# start server - create server command line
-			servercmd = server['commandstring']
+			servercmd = './' + server['commandstring']
 
 			# start server - add forced parameters to command line
 			for forced in server['forced']:
@@ -613,7 +613,7 @@ class SinglePlayerGame:
 					aicwd = None
 
 				# create ai client command line
-				aicmd = self.locallist['aiclient'][aiclient['name']]['commandstring']
+				aicmd = './' + self.locallist['aiclient'][aiclient['name']]['commandstring']
 				
 				# add forced parameters to command line
 				for forced in self.locallist['aiclient'][aiclient['name']]['forced']:

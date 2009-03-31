@@ -546,14 +546,16 @@ class SinglePlayerGame:
 			# start server
 			server = self.locallist['server'][self.sname]
 			ruleset = server['ruleset'][self.rname]
-			
-			# start server - set working directory
-			servercwd = server['cwd']
-			if servercwd == '':
-				servercwd = None
 
 			# start server - create server command line
-			servercmd = './' + server['commandstring']
+			servercmd = server['commandstring']
+			
+			# start server - set working directory
+			servercwd = os.path.normpath(server['cwd'])
+			if servercwd == '':
+				servercwd = None
+			else:
+				servercmd = os.path.join(servercwd, servercmd)
 
 			# start server - add forced parameters to command line
 			for forced in server['forced']:
@@ -607,14 +609,16 @@ class SinglePlayerGame:
 	
 			# start AI clients
 			for aiclient in self.opponents:
+				# create ai client command line
+				aicmd = self.locallist['aiclient'][aiclient['name']]['commandstring']
+
 				# set working directory
-				aicwd = self.locallist['aiclient'][aiclient['name']]['cwd']
+				aicwd = os.path.normpath(self.locallist['aiclient'][aiclient['name']]['cwd'])
 				if aicwd == '':
 					aicwd = None
+                                else:
+                                        aicmd = os.path.join(aicwd, aicmd)
 
-				# create ai client command line
-				aicmd = './' + self.locallist['aiclient'][aiclient['name']]['commandstring']
-				
 				# add forced parameters to command line
 				for forced in self.locallist['aiclient'][aiclient['name']]['forced']:
 					aicmd += ' ' + forced

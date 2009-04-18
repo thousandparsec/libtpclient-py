@@ -989,9 +989,14 @@ class Popen(object):
 
 
         def _close_fds(self, but):
-            os.closerange(3, but)
-            os.closerange(but + 1, MAXFD)
-
+            if hasattr(os, "closerange"):
+                os.closerange(3, but)
+                os.closerange(but + 1, MAXFD)
+            elif sys.platform == "linux2":
+                import ctypes
+                l = ctypes.cdll.LoadLibrary("libc.so.6")
+                for i in xrange(3, MAXFD):
+                    l.close(i)
 
         def _execute_child(self, args, executable, preexec_fn, close_fds,
                            cwd, env, universal_newlines,

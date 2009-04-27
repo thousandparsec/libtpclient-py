@@ -35,11 +35,9 @@ except ImportError, e:
 if ET is None:
     raise ImportError(str(errors))
 
-# import from local 2.6 subprocess module
-from subprocess import Popen
-
 # local imports
 import version
+from launcher import Launcher
 
 
 class _Server(dict):
@@ -595,9 +593,9 @@ class SinglePlayerGame:
 					servercmd += ' ' + ruleset['parameter'][pname]['commandstring'] % value
 
 			# start server - call the control script
-			# TODO: allow redirection of stdout and stderr
 			try:
-				self.sproc = Popen(servercmd.split(), cwd = servercwd)
+				self.sproc = Launcher(servercmd, servercwd)
+				self.sproc.launch()
 			except OSError, e:
 				raise InitError(e)
 
@@ -643,22 +641,14 @@ class SinglePlayerGame:
 				print "Running AI (%s) with cmd: %s" % (aiclient['name'], aicmd)
 
 				# call the control script
-				# TODO: allow redirection stdout and stderr
 				try:
-					aiclient['proc'] = Popen(aicmd.split(), cwd = aicwd)
+					aiclient['proc'] = Launcher(aicmd, aicwd)
+					aiclient['proc'].launch()
 				except OSError, e:
 					raise InitError(e)
 
 			# set active flag
 			self.active = True
-
-			# ensure that processes stay alive
-			time.sleep(2)
-			if not self.sproc.poll() is None:
-				raise InitError
-			for aiclient in self.opponents:
-				if not aiclient['proc'].poll() is None:
-					raise InitError
 
 		except InitError, e:
 			print e
@@ -677,19 +667,13 @@ class SinglePlayerGame:
 
 		# stop server
 		if self.sname != '':
-			try:
-				self.sproc.kill()
-			except OSError, e:
-				pass
+			self.sproc.kill()
 			self.sname = ''
 			self.rname = ''
 
 		# stop AI clients
 		for aiclient in self.opponents:
-			try:
-				aiclient['proc'].kill()
-			except OSError, e:
-				pass
+			aiclient['proc'].kill()
 		self.opponents = []
 
 		# reset active flag
@@ -715,3 +699,50 @@ class SinglePlayerGame:
 			return ''
 		else:
 			return None
+
+
+if __name__ == "__main__":
+	game = SinglePlayerGame()
+	print 'SELECT RULESET'
+	while game.rname not in game.rulesets:
+		game.rname = raw_input('Choose a ruleset from ' + str(game.rulesets) + ': ')
+	slist = game.list_servers_with_ruleset()
+	if len(slist) > 1:
+		print 'SELECT SERVER'
+		print 'There are multiple servers implementing the', game.rname, 'ruleset.'
+		while game.sname not in slist:
+			game.sname = raw_input('Choose a server from ' + str(slist) + ': ')
+	else:
+		game.sname = slist[0]
+	paramlist = game.list_rparams()
+	if len(paramlist):
+		print 'RULESET OPTIONS'
+		for param in paramlist.keys():
+			game.rparams[param] = raw_input(paramlist[param]['longname'] + ' (' + paramlist[param]['type'] + '): ')
+	paramlist = game.list_sparams()
+	if len(paramlist):
+		print 'SERVER OPTIONS'
+		for param in paramlist.keys():
+			game.sparams[param] = raw_input(paramlist[param]['longname'] + ' (' + paramlist[param]['type'] + '): ')
+	ailist = game.list_aiclients_with_ruleset()
+	if len(ailist):
+		print 'ADD OPPONENTS'
+	while len(ailist) > 0:
+		aiuser = raw_input('Enter an opponent name (leave blank to stop adding opponents): ')
+		if aiuser:
+			ainame = ''
+			while ainame not in ailist:
+				ainame = raw_input('Please select an AI client from ' + str(ailist) + ': ')
+			aiparams = {}
+			paramlist = game.list_aiparams(ainame)
+			for param in paramlist.keys():
+				aiparams[param] = raw_input(paramlist[param]['longname'] + ' (' + paramlist[param]['type'] + '): ')
+			game.add_opponent(ainame, aiuser, aiparams)
+		else:
+			break
+	port = game.start()
+	if port:
+		print "Game started on port %d." % port
+		raw_input("Press any key to stop...")
+	game.stop()
+

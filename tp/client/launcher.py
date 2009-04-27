@@ -3,6 +3,7 @@ A class which uses threads to launch and watch the output.
 """
 
 import os
+import time
 import subprocess
 import threading
 from threadcheck import thread_checker, thread_safe
@@ -103,7 +104,6 @@ class Launcher(threading.Thread):
 
 
 if __name__ == "__main__":
-	import time
 	def yexit(r):
 		print time.time(), "y", r
 	def nexit(r):

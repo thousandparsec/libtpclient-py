@@ -456,11 +456,11 @@ class Cache(object):
 			# Did we download the order description okay?
 			if not failed(desc):
 				c("orderdescs", "downloaded", amount=1, \
-					message=_("Got order description %s (ID: %i) (last modified at %s)...") % (desc._name, id, time))
+					message=_("Got order description %(order)s (ID: %(id)i) (last modified at %(time)s)...") % {'order': desc._name, 'id': id, 'time': time})
 				desc.register()
 			else:
 				c("orderdescs", "failure",
-					message=_("Failed to get order description with id, %i (last modified at %s)...") % (id, time))
+					message=_("Failed to get order description with ID %(id)i (last modified at %(time)s)...") % {'id': id, 'time': time})
 
 		c("orderdescs", "finished", message=_("Recieved all order descriptions..."))
 
@@ -505,7 +505,7 @@ class Cache(object):
 				self.players[i] = player[0]
 
 			c("players", "downloaded", amount=1, \
-				message=_("Got player %s (id: %i)...") % (player[0].name, player[0].id))
+				message=_("Got player %(player)s (ID: %(id)i)...") % {'player': player[0].name, 'id': player[0].id})
 
 			i += 1
 
@@ -542,19 +542,19 @@ class Cache(object):
 		for id, time in getattr(connection, "get_%s_ids" % sn)(iter=True):
 			ids.append(id)
 			if not cache().has_key(id):
-				c(pn, "info", message=_("%s: Getting %s as not cache().has_key(id)") % (pn, id))
+				c(pn, "info", message=_("%(plural_name)s: Getting %(id)s as not cache().has_key(id)") % {'plural_name': pn, 'id': id})
 				toget.append(id)
 			elif time > cache().times[id]:
-				c(pn, "info", message=_("%s: Getting %s (%s) as %s > %s") % (pn, id, cache(id).name, time, cache().times[id]))
+				c(pn, "info", message=_("%(plural_name)s: Getting %(id)s (%(name)s) as %(time)s > %(cached_time)s") % {'plural_name': pn, 'id': id, 'name': cache(id).name, 'time': time, 'cached_time': cache().times[id]})
 				toget.append(id)
 			else:
-				c(pn, "info", message=_("%s: Not getting %s (%s) as %s > %s") % (pn, id, cache(id).name, time, cache().times[id]))
+				c(pn, "info", message=_("%(plural_name)s: Not getting %(id)s (%(name)s) as %(time)s <= %(cached_time)s") % {'plural_name': pn, 'id': id, 'name': cache(id).name, 'time': time, 'cached_time': cache().times[id]})
 
 		# Callback function
 		def OnPacket(p, c=c, pn=pn, sn=sn, objects=objects):
 			if isinstance(p, getattr(objects, sn.title())):
 				c(pn, "downloaded", amount=1, \
-					message=_("Got %s %s (id: %i) (last modified at %s)...") % (sn, p.name, p.id, p.modify_time))
+					message=_("Got %(singular_name)s %(name)s (ID: %(id)i) (last modified at %(time)s)...") % {'singular_name': sn, 'name': p.name, 'id': p.id, 'time': p.modify_time})
 
 		if len(toget) < 1:
 			c(pn, "finished", message=_("No %s to get, skipping...") % pn)
@@ -562,7 +562,7 @@ class Cache(object):
 
 		# Download the XXX
 		c(pn, "todownload", \
-			message=_("Have %i %s to get...") % (len(toget), pn), todownload=len(toget))
+			message=_("Have %(ammount)i %(plural_name)s to get...") % {'ammount': len(toget), 'plural_name': pn}, todownload=len(toget))
 		frames = getattr(connection, "get_%s" % pn)(ids=toget, callback=OnPacket)
 
 		if failed(frames):
@@ -573,18 +573,18 @@ class Cache(object):
 			if not failed(frame):
 				if cache().has_key(id):
 					c(pn, "info", \
-						message=_("%s: Updating %s (%s - %s) with modtime %s") % (pn, id, cache(id).name, frame.name, frame.modify_time))
+						message=_("%(plural_name)s: Updating %(id)s (%(name)s - %(frame_name)s) with modtime %(time)s") % {'plural_name': pn, 'id': id, 'name': cache(id).name, 'frame_name': frame.name, 'time': frame.modify_time})
 				else:
 					c(pn, "info", \
-						message=_("%s: Updating %s (%s - New!) with modtime %s") % (pn, id, frame.name, frame.modify_time))
+						message=_("%(plural_name)s: Updating %(id)s (%(frame_name)s - New!) with modtime %(time)s") % {'plural_name': pn, 'id': id, 'frame_name': frame.name, 'time': frame.modify_time})
 				cache()[id] = (frame.modify_time, frame)
 			else:
 				if cache().has_key(id):
 					c(pn, "failure", \
-						message=_("Failed to get the %s which was previously called %s.") % (sn, cache(id).name))
+						message=_("Failed to get the %(singular_name)s which was previously called %(name)s.") % {'singular_name': sn, 'name': cache(id).name})
 				else:
 					c(pn, "failure", \
-						message=_("Failed to get the %s with id %s.") % (sn, id))
+						message=_("Failed to get the %(singular_name)s with ID %(id)s.") % {'singular_name': sn, 'id': id})
 
 				# Don't get any sub-objects for this 
 				toget.remove(id)
@@ -599,7 +599,7 @@ class Cache(object):
 		havelocal = set(cache().keys())
 		for id in havelocal-onserver:
 			c(pn, "progress", \
-				message=_("Removing %s %s as it has disappeared...") % (sn, cache(id).name))
+				message=_("Removing %(singular_name)s %(name)s as it has disappeared...") % {'singular_name': sn, 'name': cache(id).name})
 			del cache()[id]
 
 		if pn == "objects":
@@ -720,7 +720,7 @@ class Cache(object):
 		sb = subname
 
 		c(sb, "start", message=_("Getting %s..") % sb)
-		c(sb, "todownload", message=_("Have to get %s for %i %s..") % (sb, len(toget), pn), todownload=len(toget))
+		c(sb, "todownload", message=_("Have to get %(name)s for %(ammount)i %(plural_name)s..") % {'name': sb, 'ammount': len(toget), 'plural_name': pn}, todownload=len(toget))
 
 		# Set the blocking so we can pipeline the requests
 		connection.setblocking(True)
@@ -730,11 +730,11 @@ class Cache(object):
 
 			if getattr(frame, number) > 0:
 				c(sb, "progress", \
-					message=_("Sending a request for all %s on %s..") % (sb, unicode(frame.name)))
+					message=_("Sending a request for all %(name)s on %(frame_name)s..") % {'name': sb, 'frame_name': unicode(frame.name)})
 				getattr(connection, "get_%s" % sb)(id, range(0, getattr(frame, number)))
 			else:
 				c(sb, "progress", \
-					message=_("Skipping requesting %s on %s as there are none!") % (sb, unicode(frame.name)))
+					message=_("Skipping requesting %(name)s on %(frame_name)s as there are none!") % {'name': sb, 'frame_name': unicode(frame.name)})
 				empty.append(id)
 
 		for id in empty:
@@ -752,11 +752,11 @@ class Cache(object):
 
 			if failed(result):
 				c(sb, "failure", \
-					message=_("Failed to get %s for %s (id: %s) (%s)...") % (sb, unicode(frame.name), frame.id, result[1]))
+					message=_("Failed to get %(name)s for %(frame_name)s (ID: %(id)s) (%(result)s)...") % {'name': sb, 'frame_name': unicode(frame.name), 'id': frame.id, 'result': result[1]})
 				result = []
 			else:
 				c(sb, "downloaded", amount=1, \
-					message=_("Got %i %s for %s (id: %s)...") % (len(result), sb, unicode(frame.name), frame.id))
+					message=_("Got %(ammount)i %(name)s for %(frame_name)s (ID: %(id)s)...") % {'ammount': len(result), 'name': sb, 'frame_name': unicode(frame.name), 'id': frame.id})
 
 			subs = ChangeList()
 			for sub in result:
@@ -767,7 +767,7 @@ class Cache(object):
 		c(sb, "progress", message=_("Cleaning up any stray %s..") % sb)
 		for id in getattr(self, sb).keys():
 			if not cache().has_key(id):
-				c(sb, "progress", message=_("Found stray %s for %s..") % (sb, id))
+				c(sb, "progress", message=_("Found stray %(name)s for %(id)s..") % {'name': sb, 'id': id})
 				del getattr(self, sb)[id]
 
 		connection.setblocking(False)

@@ -40,4 +40,7 @@ Includes support for:
 		'tp.client.pyscheme',
 	],
 	zip_safe=False,
+
+	include_patckage_data = True,
+	package_data = { 'tp.client': ['singleplayer/*.dtd', 'singleplayer/aiclients/*', 'singleplayer/servers/*'] }
 )

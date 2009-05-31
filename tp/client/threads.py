@@ -629,7 +629,23 @@ class MediaThread(CallThread):
 		files = []
 		for file in self.cache.getpossible(['png', 'gif']):
 			files.append(file)
+		self.files = files
 		self.application.Post(self.MediaUpdateEvent(files))
+	
+	@thread_safe
+	def GetFilenames(self, fileprefix):
+		"""\
+		Get the list of possible files with extensions for a given file prefix.
+		"""
+		filelist = []
+		for file in self.files:
+			if not fileprefix in file:
+				continue
+			
+			print file
+			filelist.append(file)
+				
+		return filelist
 
 from tp.netlib.discover import LocalBrowser as LocalBrowserB
 from tp.netlib.discover import RemoteBrowser as RemoteBrowserB

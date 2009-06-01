@@ -4,6 +4,7 @@ import socket
 import sys
 import time
 import traceback
+from threading import Lock
 
 from media import Media
 
@@ -556,7 +557,7 @@ class MediaThread(CallThread):
 		CallThread.__init__(self)
 
 		self.application = application
-
+		self.fileslock = Lock()
 		self.todownload = {}
 		self.tostop = []
 	
@@ -623,13 +624,19 @@ class MediaThread(CallThread):
 		"""\
 		ConnectTo 
 		"""
-		self.cache = Media("http://svn.thousandparsec.net/svn/media/client/")
+		self.cache = Media(host)
 
 		# FIXME: Hack to prevent cross thread calling - should fix the media object
 		files = []
 		for file in self.cache.getpossible(['png', 'gif']):
 			files.append(file)
-		self.files = files
+		
+		self.fileslock.acquire()	
+		try:
+			self.files = files
+		finally:
+			self.fileslock.release()
+			
 		self.application.Post(self.MediaUpdateEvent(files))
 	
 	@thread_safe
@@ -638,13 +645,16 @@ class MediaThread(CallThread):
 		Get the list of possible files with extensions for a given file prefix.
 		"""
 		filelist = []
-		for file in self.files:
-			if not fileprefix in file:
-				continue
+		self.fileslock.acquire()	
+		try:
+			for file in self.files:
+				if not fileprefix in file:
+					continue
 			
-			print file
-			filelist.append(file)
-				
+				filelist.append(file)
+		finally:
+			self.fileslock.release()
+			
 		return filelist
 
 from tp.netlib.discover import LocalBrowser as LocalBrowserB

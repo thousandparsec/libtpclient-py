@@ -305,7 +305,7 @@ class Media(object):
 #			print e
 #			return False
 
-	def __init__(self, url, configdir=None):
+	def __init__(self, url, username, password, configdir=None):
 		"""\
 		Everything must be there, even if the port is the default.
 
@@ -314,7 +314,8 @@ class Media(object):
 		configdir is where the cache will be stored.
 		mediatypes is the type of media which the client needs.
 		"""
-		self.url = url
+		scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
+		self.url = scheme + "://" + username + ":" + password + "@" + netloc + path
 		# Make the URL safe for filesystems
 		safeurl = filesafe(url)
 
@@ -344,6 +345,10 @@ class Media(object):
 	def connection(self):
 		if not hasattr(self, '_connection'):
 			type, host, self.basepath, t, t, t = urlparse.urlparse(self.url)
+			# If we're logging in, remove the username and password so httplib doesn't
+			# think that the colon signifies a port number.
+			if "@" in host:
+				login, host = host.split("@")
 			self._connection = getattr(httplib, "%sConnection" % type.upper())(host)
 		return self._connection
 

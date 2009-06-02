@@ -621,11 +621,12 @@ class MediaThread(CallThread):
 			return location
 		self.todownload[file] = None
 
-	def ConnectTo(self, host, username, debug=False):
+	def ConnectTo(self, host, username, password, debug=False):
 		"""\
 		ConnectTo 
 		"""
-		self.cache = Media(host)
+		
+		self.cache = Media(host, username, password)
 
 		# FIXME: Hack to prevent cross thread calling - should fix the media object
 		files = []
@@ -648,7 +649,7 @@ class MediaThread(CallThread):
 		filelist = []
 		self.fileslock.acquire()	
 		try:
-			if self.files == []:
+			if len(self.files) <= 0:
 				return []
 			for file in self.files:
 				if not fileprefix in file:

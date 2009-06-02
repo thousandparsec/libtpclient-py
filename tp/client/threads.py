@@ -560,6 +560,7 @@ class MediaThread(CallThread):
 		self.fileslock = Lock()
 		self.todownload = {}
 		self.tostop = []
+		self.files = []
 	
 	def idle(self):
 		if len(self.todownload) <= 0:
@@ -647,6 +648,8 @@ class MediaThread(CallThread):
 		filelist = []
 		self.fileslock.acquire()	
 		try:
+			if self.files == []:
+				return []
 			for file in self.files:
 				if not fileprefix in file:
 					continue

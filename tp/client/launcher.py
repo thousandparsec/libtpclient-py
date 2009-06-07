@@ -82,7 +82,7 @@ class Launcher(threading.Thread):
 
 		# Exit Callback
 		if self.onexit is not None:
-			self.onexit(self.process.returncode)
+			self.onexit(self)
 
 	def kill(self, waitfor=30):
 		"""Kill the process.

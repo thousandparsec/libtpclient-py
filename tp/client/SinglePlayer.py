@@ -312,6 +312,13 @@ class InitError(Exception):
 	"""
 	pass
 
+class SubprocessError(Exception):
+	"""\
+	Subprocess error, raised when there is a problem with a server or AI
+	client subprocess.
+	"""
+	pass
+
 class SinglePlayerGame:
 	"""\
 	The single-player game manager. This is the object which should be
@@ -594,7 +601,7 @@ class SinglePlayerGame:
 
 			# start server - call the control script
 			try:
-				self.sproc = Launcher(servercmd, servercwd)
+				self.sproc = Launcher(servercmd, servercwd, onexit = self._onexit)
 				self.sproc.launch()
 			except OSError, e:
 				raise InitError(e)
@@ -614,8 +621,8 @@ class SinglePlayerGame:
 				aicwd = os.path.normpath(self.locallist['aiclient'][aiclient['name']]['cwd'])
 				if aicwd == '':
 					aicwd = None
-                                else:
-                                        aicmd = os.path.join(aicwd, aicmd)
+				else:
+					aicmd = os.path.join(aicwd, aicmd)
 
 				# add forced parameters to command line
 				for forced in self.locallist['aiclient'][aiclient['name']]['forced']:
@@ -642,7 +649,7 @@ class SinglePlayerGame:
 
 				# call the control script
 				try:
-					aiclient['proc'] = Launcher(aicmd, aicwd)
+					aiclient['proc'] = Launcher(aicmd, aicwd, onexit = self._onexit)
 					aiclient['proc'].launch()
 				except OSError, e:
 					raise InitError(e)
@@ -665,19 +672,41 @@ class SinglePlayerGame:
 		if not self.active:
 			return
 
-		# stop server
-		if self.sname != '':
-			self.sproc.kill()
-			self.sname = ''
-			self.rname = ''
+		# reset active flag
+		self.active = False
+
+		try:
+			# stop server
+			if self.sname != '':
+				self.sproc.kill()
+				self.sname = ''
+				self.rname = ''
+		except OSError, e:
+			print e
 
 		# stop AI clients
 		for aiclient in self.opponents:
-			aiclient['proc'].kill()
+			try:
+				aiclient['proc'].kill()
+			except OSError, e:
+				print e
 		self.opponents = []
 
-		# reset active flag
-		self.active = False
+	def _onexit(self, launcher):
+		"""\
+		Internal callback for process termination. If called prematurely (i.e.
+		while the game is still active, stop() has not been called) it raises
+		a SubprocessError.
+
+		@param launcher: Reference to the calling process launcher instance.
+		@type launcher: L{launcher.Launcher}
+		"""
+		if self.active:
+			self.stop()
+			e = launcher.torun[0] \
+			+ " exited prematurely with return code %d" \
+			% launcher.process.returncode
+			raise SubprocessError(e)
 
 	def _format_value(self, value, ptype):
 		"""\

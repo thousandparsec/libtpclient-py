@@ -12,6 +12,8 @@ import sys
 import time
 import socket
 import urllib
+import re
+from threading import Event
 
 # find an elementtree implementation
 ET = None
@@ -351,6 +353,7 @@ class SinglePlayerGame:
 
 		# initialize internals
 		self.active = False
+		self.ready = Event()
 		self.sname = ''
 		self.rname = ''
 		self.sparams = {}
@@ -620,17 +623,24 @@ class SinglePlayerGame:
 					servercmd += ' ' + ruleset['parameter'][pname]['commandstring'] % value
 
 			# start server - call the control script
+			print "Running server with cmd:", servercmd
+			onready = None
+			if server['started'] != '':
+				onready = (re.compile(server['started']), self._onready)
 			try:
-				self.sproc = Launcher(servercmd, servercwd, onexit = self._onexit)
+				self.sproc = Launcher(servercmd, servercwd, onexit = self._onexit, onready = onready)
 				self.sproc.launch()
 			except OSError, e:
 				raise InitError(e)
 
-			print "Running server with cmd:", servercmd
-
 			# wait for the server to initialize
-			# FIXME: use admin protocol if available to check this (loop)
-			time.sleep(5)
+			if onready is None:
+				time.sleep(5)
+			else:
+				self.ready.wait(30)
+				if not self.ready.isSet():
+					raise InitError("Server failed to start.")
+				self.ready.clear()
 	
 			# start AI clients
 			for aiclient in self.opponents:
@@ -711,6 +721,12 @@ class SinglePlayerGame:
 			except OSError, e:
 				print e
 		self.opponents = []
+
+	def _onready(self):
+		"""\
+		Internal callback for process ready state. Sets the ready event.
+		"""
+		self.ready.set()
 
 	def _onexit(self, launcher):
 		"""\

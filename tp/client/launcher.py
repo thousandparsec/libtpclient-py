@@ -80,7 +80,7 @@ class Launcher(threading.Thread):
 			self.stdout.append(self.process.stdout.readline()[:-1])
 	
 			# Check if the system has entered the "ready" state.	
-			if self.onready and self.onready[0].match(self.stdout):
+			if self.onready and self.onready[0].search(self.stdout[-1]):
 				self.onready[1]()
 
 			# Cull the excess scrollback	

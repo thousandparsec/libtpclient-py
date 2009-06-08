@@ -45,7 +45,13 @@ class _Server(dict):
 	Dictionary subclass for server descriptions.
 	"""
 	def __init__(self):
-		for k in ['longname', 'version', 'description', 'commandstring', 'cwd']:
+		for k in ['longname',
+				  'version',
+				  'description',
+				  'commandstring',
+				  'cwd',
+				  'started',
+				 ]:
 			self[k] = ''
 		self['forced'] = []
 		self['parameter'] = {}
@@ -56,7 +62,13 @@ class _AIClient(dict):
 	Dictionary subclass for AI client descriptions.
 	"""
 	def __init__(self):
-		for k in ['longname', 'version', 'description', 'commandstring', 'cwd']:
+		for k in ['longname',
+				  'version',
+				  'description',
+				  'commandstring',
+				  'cwd',
+				  'started',
+				 ]:
 			self[k] = ''
 		self['rules'] = []
 		self['forced'] = []
@@ -67,7 +79,10 @@ class _Ruleset(dict):
 	Dictionary subclass for ruleset descriptions.
 	"""
 	def __init__(self):
-		for k in ['longname', 'version', 'description']:
+		for k in ['longname',
+				  'version',
+				  'description',
+				 ]:
 			self[k] = ''
 		self['forced'] = []
 		self['parameter'] = {}
@@ -77,8 +92,13 @@ class _Parameter(dict):
 	Dictionary subclass for parameter descriptions.
 	"""
 	def __init__(self):
-		for el in ['type', 'longname', 'description', 'default', 'commandstring']:
-			self[el] = ''
+		for k in ['type',
+				  'longname',
+				  'description',
+				  'default',
+				  'commandstring',
+				 ]:
+			self[k] = ''
 
 
 class LocalList(dict):

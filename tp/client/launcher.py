@@ -1,5 +1,9 @@
-"""
+"""\
 A class which uses threads to launch and watch the output.
+
+@author: Tim Ansell (mithro)
+@organization: Thousand Parsec
+@license: GPL-2
 """
 
 import os
@@ -12,22 +16,22 @@ from cStringIO import StringIO
 
 class Launcher(threading.Thread):
 	def __init__(self, torun, cwd, scrollback=1000, onexit=None, onready=None):
-		"""
+		"""\
 		A class which starts another process and stores the stdout out.
 		(stderr is redirect to stdout.)
 
-		Args:
-			cwd:   Location where to start the program.
-			torun: Program (with full path) and args to start.
-			scrollback: The number of lines to store in scrollback (defaults to 1000).
-
-			onready: Tuple of 
-					  (Regex object to match,
-					   Function to be called when the program output matches regex.)
-
-			onexit: Function to be called when the program exits.
-					The function takes a single argument, the return code of
-					the process.  
+		@param cwd: Location where to start the program.
+		@type cwd: C{string}
+		@param torun: Program (with full path) and args to start.
+		@type torun: C{string}
+		@param scrollback: The number of lines to store in scrollback (default 1000).
+		@type scrollback: C{int}
+		@param onready: Tuple of (regex object to match, function to be called when
+		the program output matches regex).
+		@type onready: C{tuple}
+		@param onexit: Function to be called when the program exits, taking
+		a reference to this launcher instance as an argument.
+		@type onexit: C{function}
 		"""
 		threading.Thread.__init__(self)
 
@@ -50,8 +54,9 @@ class Launcher(threading.Thread):
 		self.onready = onready
 
 	def launch(self):
-		"""Start the process."""
-
+		"""\
+		Start the process.
+		"""
 		self.process = subprocess.Popen(
 			self.torun,
 			bufsize=0,
@@ -68,7 +73,9 @@ class Launcher(threading.Thread):
 		self.start()
 	
 	def run(self):
-		"""*Internal*"""
+		"""\
+		Internal - overrides Thread.run().
+		"""
 		while self.process.poll() is None:
 			self.stdout.append(self.process.stdout.readline()[:-1])
 	
@@ -85,13 +92,12 @@ class Launcher(threading.Thread):
 			self.onexit(self)
 
 	def kill(self, waitfor=30):
-		"""Kill the process.
+		"""\
+		Kill the process. First tries a soft kill (SIGTERM) and if the process
+		does not die, then a hard kill (SIGKILL).
 
-		Firsts tries a soft kill (SIGTERM) and if the process does not die,
-		then a hard kill (SIGKILL).
-
-		Args:
-			waitfor: How long to wait between the two kills.
+		@param waitfor: Time in seconds to wait between the two kills.
+		@type waitfor: C{int}
 		"""
 		self.process.terminate()
 
@@ -123,4 +129,3 @@ if __name__ == "__main__":
 	time.time()
 	y.kill()
 	n.kill()
-

@@ -665,15 +665,15 @@ class Cache(object):
 					else:
 						c(sb, "progress", \
 							message=_("Skipping requesting %s on %s as there are none!") % (sb, unicode(object.name)))
-						emptyqueues.append(value.queueid)
+						emptyqueues.append((objectid, value.queueid))
 
 		print "Getting data for:"
 		print gettingqueues
 		print "The following where empty:"
 		print emptyqueues
-
-		for id in emptyqueues:
-			getattr(self, sb)[id] = (cache(id).modify_time, ChangeList())
+		
+		for objectid, id in emptyqueues:
+			getattr(self, sb)[id] = (cache(objectid).modify_time, ChangeList())
 
 		# Wait for the response to the order requests
 		while len(gettingqueues) > 0:

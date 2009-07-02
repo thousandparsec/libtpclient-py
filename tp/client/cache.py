@@ -90,12 +90,12 @@ class Cache(object):
 				if not hasattr(self, "nodes"):
 					self.nodes = [self.node]
 
-			# Do a type check for the nodes
-			for node in self.nodes:
-				if (not node is None) and not isinstance(node, ChangeNode):
-					raise TypeError("Nodes must be of type ChangeNode not %s (%r)" % (type(node), node))
+				# Do a type check for the nodes
+				for node in self.nodes:
+					if (not node is None) and not isinstance(node, ChangeNode):
+						raise TypeError("Nodes must be of type ChangeNode not %s (%r)" % (type(node), node))
 
-				assert node.inlist()
+					assert node.inlist()
 
 			if len(args) == 1:
 				self.change = args.pop(0)

@@ -12,6 +12,8 @@ import sys
 import time
 import socket
 import urllib
+import re
+from threading import Event
 
 # find an elementtree implementation
 ET = None
@@ -45,7 +47,13 @@ class _Server(dict):
 	Dictionary subclass for server descriptions.
 	"""
 	def __init__(self):
-		for k in ['longname', 'version', 'description', 'commandstring', 'cwd']:
+		for k in ['longname',
+				  'version',
+				  'description',
+				  'commandstring',
+				  'cwd',
+				  'started',
+				 ]:
 			self[k] = ''
 		self['forced'] = []
 		self['parameter'] = {}
@@ -56,7 +64,13 @@ class _AIClient(dict):
 	Dictionary subclass for AI client descriptions.
 	"""
 	def __init__(self):
-		for k in ['longname', 'version', 'description', 'commandstring', 'cwd']:
+		for k in ['longname',
+				  'version',
+				  'description',
+				  'commandstring',
+				  'cwd',
+				  'started',
+				 ]:
 			self[k] = ''
 		self['rules'] = []
 		self['forced'] = []
@@ -67,7 +81,10 @@ class _Ruleset(dict):
 	Dictionary subclass for ruleset descriptions.
 	"""
 	def __init__(self):
-		for k in ['longname', 'version', 'description']:
+		for k in ['longname',
+				  'version',
+				  'description',
+				 ]:
 			self[k] = ''
 		self['forced'] = []
 		self['parameter'] = {}
@@ -77,8 +94,13 @@ class _Parameter(dict):
 	Dictionary subclass for parameter descriptions.
 	"""
 	def __init__(self):
-		for el in ['type', 'longname', 'description', 'default', 'commandstring']:
-			self[el] = ''
+		for k in ['type',
+				  'longname',
+				  'description',
+				  'default',
+				  'commandstring',
+				 ]:
+			self[k] = ''
 
 
 class LocalList(dict):
@@ -312,6 +334,13 @@ class InitError(Exception):
 	"""
 	pass
 
+class SubprocessError(Exception):
+	"""\
+	Subprocess error, raised when there is a problem with a server or AI
+	client subprocess.
+	"""
+	pass
+
 class SinglePlayerGame:
 	"""\
 	The single-player game manager. This is the object which should be
@@ -324,6 +353,7 @@ class SinglePlayerGame:
 
 		# initialize internals
 		self.active = False
+		self.ready = Event()
 		self.sname = ''
 		self.rname = ''
 		self.sparams = {}
@@ -593,17 +623,24 @@ class SinglePlayerGame:
 					servercmd += ' ' + ruleset['parameter'][pname]['commandstring'] % value
 
 			# start server - call the control script
+			print "Running server with cmd:", servercmd
+			onready = None
+			if server['started'] != '':
+				onready = (re.compile(server['started']), self._onready)
 			try:
-				self.sproc = Launcher(servercmd, servercwd)
+				self.sproc = Launcher(servercmd, servercwd, onexit = self._onexit, onready = onready)
 				self.sproc.launch()
 			except OSError, e:
 				raise InitError(e)
 
-			print "Running server with cmd:", servercmd
-
 			# wait for the server to initialize
-			# FIXME: use admin protocol if available to check this (loop)
-			time.sleep(5)
+			if onready is None:
+				time.sleep(5)
+			else:
+				self.ready.wait(30)
+				if not self.ready.isSet():
+					raise InitError("Server failed to start.")
+				self.ready.clear()
 	
 			# start AI clients
 			for aiclient in self.opponents:
@@ -614,8 +651,8 @@ class SinglePlayerGame:
 				aicwd = os.path.normpath(self.locallist['aiclient'][aiclient['name']]['cwd'])
 				if aicwd == '':
 					aicwd = None
-                                else:
-                                        aicmd = os.path.join(aicwd, aicmd)
+				else:
+					aicmd = os.path.join(aicwd, aicmd)
 
 				# add forced parameters to command line
 				for forced in self.locallist['aiclient'][aiclient['name']]['forced']:
@@ -642,7 +679,7 @@ class SinglePlayerGame:
 
 				# call the control script
 				try:
-					aiclient['proc'] = Launcher(aicmd, aicwd)
+					aiclient['proc'] = Launcher(aicmd, aicwd, onexit = self._onexit)
 					aiclient['proc'].launch()
 				except OSError, e:
 					raise InitError(e)
@@ -665,19 +702,47 @@ class SinglePlayerGame:
 		if not self.active:
 			return
 
-		# stop server
-		if self.sname != '':
-			self.sproc.kill()
-			self.sname = ''
-			self.rname = ''
+		# reset active flag
+		self.active = False
+
+		try:
+			# stop server
+			if self.sname != '':
+				self.sproc.kill()
+				self.sname = ''
+				self.rname = ''
+		except OSError, e:
+			print e
 
 		# stop AI clients
 		for aiclient in self.opponents:
-			aiclient['proc'].kill()
+			try:
+				aiclient['proc'].kill()
+			except OSError, e:
+				print e
 		self.opponents = []
 
-		# reset active flag
-		self.active = False
+	def _onready(self):
+		"""\
+		Internal callback for process ready state. Sets the ready event.
+		"""
+		self.ready.set()
+
+	def _onexit(self, launcher):
+		"""\
+		Internal callback for process termination. If called prematurely (i.e.
+		while the game is still active, stop() has not been called) it raises
+		a SubprocessError.
+
+		@param launcher: Reference to the calling process launcher instance.
+		@type launcher: L{launcher.Launcher}
+		"""
+		if self.active:
+			self.stop()
+			e = launcher.torun[0] \
+			+ " exited prematurely with return code %d" \
+			% launcher.process.returncode
+			raise SubprocessError(e)
 
 	def _format_value(self, value, ptype):
 		"""\

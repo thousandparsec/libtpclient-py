@@ -161,6 +161,8 @@ class Media(object):
 		"""
 		# Search through the local filesystem and see if we can find the file
 		foundhere = []
+		if file == None:
+			return None
 		for location in self.locations:
 			possible = os.path.join(location, file)
 			if os.path.exists(possible):
@@ -174,7 +176,11 @@ class Media(object):
 		"""
 		location = None
 		curtime = 0
-		for possible in self.locate(file):
+		possiblefiles = self.locate(file);
+		if possiblefiles == None:
+			return None
+		
+		for possible in possiblefiles:
 			try:
 				modtime, size, checksum = self.metainfo(possible)
 				if modtime > curtime:
@@ -272,6 +278,9 @@ class Media(object):
 		global MEDIA
 
 		# Where the file will be downloaded too
+		if file == None:
+			return None
+		
 		local_location  = os.path.join(self.locations[-1], file)
 		# Where the file is on the remote server
 		remote_location = urlparse.urljoin(self.url, file)

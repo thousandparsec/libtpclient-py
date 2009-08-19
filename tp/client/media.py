@@ -108,16 +108,14 @@ class CallbackLimiter(object):
 
 		downloaded = chunksize*i
 		if not (i == 0 or downloaded == maxsize):
-			# Skip if we have had a call back in the last 5 seconds
-			if self.last + 5 > time.time():
+			# Skip if we have had a call back in the last 2 seconds
+			if self.last + 2 > time.time():
 				return
 
 		self.realcallback(i, chunksize, maxsize)
 		self.last  = time.time()
 
-from threadcheck import thread_checker, thread_safe
 class Media(object):
-	__metaclass__ = thread_checker
 
 	def configdir():
 		dirs = [("APPDATA", "Thousand Parsec"), ("HOME", ".tp"), (".", "var")]
@@ -135,7 +133,7 @@ class Media(object):
 		"""\
 		Get the function needed to do a hash
 		"""
-		alog, hash = split(s, '-')
+		alog, hash = s.split(':')
 		if alog == 'md5':
 			import md5
 			checksum = (md5.new, hash)
@@ -144,17 +142,17 @@ class Media(object):
 			checksum = (sha.new, hash)
 		else:
 			raise IOError("Unknown hash algorithm.")
-		return hash
+		return checksum
 
-	@thread_safe
 	def metainfo(self, file):
 		"""\
 		Return the info in the metafile.
 		"""
+		if not os.path.isfile(file+'.meta'):
+			return (0, 0, None)
 		modtime, size, checksum = open(file+'.meta', 'r').read().strip().split(' ')
 		return modtime, long(size), checksum
 
-	@thread_safe
 	def locate(self, file):
 		"""\
 		Locates a file with a given filename on the filesystem.
@@ -169,7 +167,6 @@ class Media(object):
 				foundhere.append(possible)
 		return foundhere
 
-	@thread_safe
 	def newest(self, file):
 		"""\
 		Returns the newest version of a file.
@@ -205,25 +202,24 @@ class Media(object):
 	def media(self):
 		"""\
 		"""
-		global MEDIA
-
 		# Use the cached version if it's avaliable
 		if hasattr(self, '_media'):
 			return self._media
-
+	
+	def update_media(self):
 		file = self.newest(MEDIA)
-		if file is None or not self.connection is None:
-			if not file is None:
-				modtime, size, checksum = self.metainfo(file)
-				# Check if there is a remote version which is new...
-				remotetime = self.remotetime(MEDIA)
-				if remotetime > modtime:
-					# Need to get a new version
-					file = self.get(MEDIA)
-			else:
-				# Need to get a version
+	
+		if file is None:
+			# Need to get a version
+			file = self.get(MEDIA)
+		elif self.connection is not None:
+			modtime, size, checksum = self.metainfo(file)
+			# Check if there is a remote version which is new...
+			remotetime = self.remotetime(MEDIA)
+			if remotetime > modtime:
+				# Need to get a new version
 				file = self.get(MEDIA)
-
+		
 		media = {}
 		for line in gzip.open(file).readlines():
 			file, timestamp, size, checksum = line.strip().split()
@@ -270,21 +266,11 @@ class Media(object):
 		
 		# Looks like we will have to download a peice of media
 		return self.get(media)
-
-	def get(self, file, callback=None):
+	
+	def recreatefile(self, local_location):
 		"""\
-		Gets a file from the remote server.
+		Creates a file at a given location, removing the old one if necessary.
 		"""
-		global MEDIA
-
-		# Where the file will be downloaded too
-		if file == None:
-			return None
-		
-		local_location  = os.path.join(self.locations[-1], file)
-		# Where the file is on the remote server
-		remote_location = urlparse.urljoin(self.url, file)
-
 		# If the file already exists we better remove it
 		if os.path.exists(local_location):
 			os.unlink(local_location)
@@ -292,27 +278,48 @@ class Media(object):
 		dir = os.path.dirname(local_location)
 		if not os.path.exists(dir):
 			os.makedirs(dir)
+	
+	def get(self, file, callback=None):
+		"""\
+		Gets a file from the remote server.
+		"""
+		# Where the file will be downloaded too
+		local_location  = os.path.join(self.locations[-1], file)
+		# Where the file is on the remote server
+		remote_location = urlparse.urljoin(self.url, file)
 
-		if 1:		
-#		try:
-			# Download the file
-			(trash, message) = self.getter.retrieve(remote_location, local_location, CallbackLimiter(callback))
+		self.recreatefile(local_location)
+		
+		# Download the file
+		(trash, message) = self.getter.retrieve(remote_location, local_location, CallbackLimiter(callback))
 
-			if file != MEDIA:
-				mediagz = self.media()
-				# Check the checksum
+		if file != MEDIA:
+			mediagz = self.media()
 
-				# Check the filesize
-
-				# Create the metafile from the mediagz info
-				open(local_location+".meta", 'w').write("%s %s %s" % mediagz[file])
-			else:
-				# Have to generate our own data
-				open(local_location + ".meta", 'w').write("%s %s %s" % (totime(message.getheader('last-modified')), 0, 'None'))
-			return local_location
-#		except IOError, e:
-#			print e
-#			return False
+			# Create the metafile from the mediagz info
+			open(local_location+".meta", 'w').write("%s %s %s" % mediagz[file])
+			
+			modtime, size, testsum = self.metainfo(local_location)
+			
+			if size != 0 and os.path.getsize(local_location) != size:
+				raise IOError("File size of downloaded file " + file + " does not match the expected filesize.");
+			
+			# Check the checksum
+			import hashlib
+			
+			if not "None" in testsum and testsum is not None:
+				checksumtype, testchecksum = self.hash(testsum)
+			
+				newfile = open(local_location).read()
+			
+				localchecksum = checksumtype(newfile)
+			
+				if testchecksum != localchecksum:
+					raise IOError("Checksum of downloaded file " + file + " does not match!")
+		else:
+			# Have to generate our own data
+			open(local_location + ".meta", 'w').write("%s %s %s" % (totime(message.getheader('last-modified')), 0, 'None'))
+		return local_location
 
 	def __init__(self, url, username, password, configdir=None):
 		"""\
@@ -349,7 +356,7 @@ class Media(object):
 
 		# Append the users "localdir"
 		self.locations.append(userdir)
-
+	
 	@property
 	def connection(self):
 		if not hasattr(self, '_connection'):

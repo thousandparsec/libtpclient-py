@@ -10,6 +10,12 @@ from media import Media
 
 from config import load_data, save_data
 from version import version
+		
+from tp.netlib.objects import parameters
+from tp.netlib import objects
+from requirements import graphicsdir
+
+from extra import objectutils
 
 def nop(*args, **kw):
 	return
@@ -488,6 +494,96 @@ class NetworkThread(CallThread):
 			"There where the following errors when trying to send changes to the server:"
 			"The following updates could not be made:"
 
+class ThreadedMedia(Media):
+	__metaclass__ = thread_checker
+
+	def __init__(self, url, username, password, configdir=None):
+		self.medialock = threading.Lock()
+		self.gettingfiles = set()
+		self.gettingfileslock = threading.Lock()
+		self.locationlock = threading.Lock()
+		
+		Media.__init__(self, url, username, password, configdir)
+		
+	@thread_safe
+	def media(self):
+		"""\
+		Returns the current media.gz file.
+		"""
+		self.medialock.acquire()
+		try:
+			return Media.media(self)
+		finally:
+			self.medialock.release()
+			
+	@thread_safe
+	def get(self, file, callback=None):
+		"""\
+		Gets a file from the remote server.
+		"""
+		self.gettingfileslock.acquire()
+		try:
+			if file in self.gettingfiles:
+				return None
+			
+			self.gettingfiles.add(file)
+		finally:
+			self.gettingfileslock.release()
+		
+		thisfile = Media.get(self, file, callback)
+		
+		self.gettingfileslock.acquire()
+		try:
+			self.gettingfiles.remove(file)
+		finally:
+			self.gettingfileslock.release()
+		
+		return thisfile
+	
+	@thread_safe
+	def recreatefile(self, local_location):
+		"""\
+		Creates a file at a given location, removing the old one if necessary.
+		"""
+		self.locationlock.acquire()
+		try:
+			Media.recreatefile(self, local_location)
+		finally:
+			self.locationlock.release()
+		
+
+class DownloaderThread(threading.Thread):
+	"""\
+	This thread downloads a file and then exits.
+	"""
+	
+	# FIXME: Creating and destroying threads is expensive. This should use a thread pool.
+	
+	name = "Downloader"
+	
+	__metaclass__ = thread_checker
+	
+	def __init__(self, file, callback, finishedcallback, parent, cache, application):
+		threading.Thread.__init__(self)
+		self.file = file
+		self.finishedcallback = finishedcallback
+		self.callback = callback
+		self.parent = parent
+		self.cache = cache
+		self.application = application
+	
+	@thread_safe
+	def run(self):
+		try:
+			localfile = self.cache.get(self.file, callback=self.callback)
+			self.application.Post(self.parent.MediaDownloadDoneEvent(self.file, localfile=localfile))
+			self.finishedcallback(self.file)
+		except self.parent.MediaDownloadAbortEvent, e:
+			self.finishedcallback(self.file)
+			self.application.Post(e)
+		
+		self.exit = True
+
 class MediaThread(CallThread):
 	"""\
 	The media thread deals with downloading media off the internet.
@@ -557,13 +653,20 @@ class MediaThread(CallThread):
 		CallThread.__init__(self)
 
 		self.application = application
-		self.fileslock = Lock()
-		self.todownload = {}
-		self.tostop = []
+		
 		self.files = []
+		self.fileslock = Lock()
+		
+		self.filesinprogress = set()
+		self.filesinprogresslock = Lock()
+		
+		self.todownload = {}
+		self.tostop = set()
+		
 	
 	def idle(self):
 		if len(self.todownload) <= 0:
+			# When we are really idle, call our base class's idle method.
 			CallThread.idle(self)
 			return
 
@@ -572,20 +675,41 @@ class MediaThread(CallThread):
 			progress = min(blocknum*blocksize, size)
 			if blocknum == 0:
 				self.application.Post(self.MediaDownloadStartEvent(file, progress, size))
-	
+
 			self.application.Post(self.MediaDownloadProgressEvent(file, progress, size, amount=blocksize))
-	
+
 			if file in tostop:
+				self.filedone(file)
 				tostop.remove(file)
 				raise self.MediaDownloadAbortEvent(file)
-
+		
+		@thread_safe
+		def finishedcallback(filename):
+			self.filedone(filename)
+		
 		try:
-			localfile = self.cache.get(file, callback=callback)
-			self.application.Post(self.MediaDownloadDoneEvent(file, localfile=localfile))
+			newthread = DownloaderThread(file, callback, finishedcallback, self, self.cache, self.application)
+			newthread.start()
+			self.filesinprogresslock.acquire()	
+			try:
+				self.filesinprogress.add(file)
+			finally:
+				self.filesinprogresslock.release()
+			del self.todownload[file]
+		
 		except self.MediaDownloadAbortEvent, e:
 			self.application.Post(e)
 
-		del self.todownload[file]
+	@thread_safe
+	def filedone(self, filename):
+		"""\
+		Called when a file finishes downloading, to remove it from the list of files in progress.
+		"""
+		self.filesinprogresslock.acquire()	
+		try:
+			self.filesinprogress.remove(filename)
+		finally:
+			self.filesinprogresslock.release()
 
 	def error(self, error):
 		if isinstance(error, (IOError, socket.error)):
@@ -597,7 +721,7 @@ class MediaThread(CallThread):
 	@thread_safe
 	def Cleanup(self):
 		for file in self.todownload:
-			self.tostop.append(file)
+			self.tostop.add(file)
 		CallThread.Cleanup(self)
 
 	@thread_safe
@@ -609,24 +733,32 @@ class MediaThread(CallThread):
 
 	@thread_safe
 	def StopFile(self, file):
-		self.tostop.append(file)
+		self.tostop.add(file)
 
 	@thread_safe
 	def GetFile(self, file):
 		"""\
-		Get a File, return directly or start a download.
+		Get a File, return directly or start a download. Returns None if download is started.
 		"""
 		location = self.cache.newest(file)
 		if location:
 			return location
-		self.todownload[file] = None
+			
+		self.filesinprogresslock.acquire()	
+		try:
+			if not file in self.filesinprogress:
+				self.todownload[file] = None
+		finally:
+			self.filesinprogresslock.release()
 
 	def ConnectTo(self, host, username, password, debug=False):
 		"""\
 		ConnectTo 
 		"""
 		
-		self.cache = Media(host, username, password)
+		self.cache = ThreadedMedia(host, username, password)
+
+		self.cache.update_media()
 
 		# FIXME: Hack to prevent cross thread calling - should fix the media object
 		files = []
@@ -642,10 +774,12 @@ class MediaThread(CallThread):
 		self.application.Post(self.MediaUpdateEvent(files))
 	
 	@thread_safe
-	def GetFilenames(self, fileprefix):
+	def GetFilenames(self, fileprefix, filesuffixlist=None):
 		"""\
 		Get the list of possible files with extensions for a given file prefix.
 		"""
+		if filesuffixlist is None:
+			filesuffixlist = []
 		filelist = []
 		self.fileslock.acquire()	
 		try:
@@ -654,12 +788,146 @@ class MediaThread(CallThread):
 			for file in self.files:
 				if not fileprefix in file:
 					continue
-			
-				filelist.append(file)
+					
+				if len(filesuffixlist) <= 0:
+					filelist.append(file)
+				else:
+					for suffix in suffixlist:
+						if not file.endswith(suffix):
+							continue
+						filelist.append(file)
+						break
 		finally:
 			self.fileslock.release()
 			
 		return filelist
+	
+	@thread_safe
+	def getImages(self, oid, filesuffixlist=None):
+		"""\
+		Returns full image URLs for this object as a list of tuples, each containing (name, [filename1, etc.])
+		"""
+		if filesuffixlist is None:
+			filesuffixlist = []
+		urls = []
+		mediaurls = objectutils.getMediaURLs(self.application.cache, oid)
+		for (name, url) in mediaurls.items():
+			filenames = self.GetFilenames(url, filesuffixlist)
+			urls.append((name, filenames))
+		
+		images = []
+		for name, filenames in urls:
+			thisnameimages = []
+			for imageurl in filenames:
+				file = self.GetFile(imageurl)
+		
+				if file == None:
+					continue
+				
+				thisnameimages.append(file)
+			
+			if len(thisnameimages) <= 0:
+				continue
+			
+			images.append((name, thisnameimages))
+		
+		return images
+
+	@thread_safe
+	def getImagesForURL(self, url, filesuffixlist=None):
+		"""\
+		Returns full image URLs for a given base URL.
+		"""
+		if filesuffixlist is None:
+			filesuffixlist = []
+		images = []
+		filenames = self.GetFilenames(url, filesuffixlist)
+		for filename in filenames:
+			file = self.GetFile(filename)
+		
+			if file == None:
+				continue
+			
+			images.append(file)
+		return images
+	
+	@thread_safe
+	def getDownloading(self):
+		"""\
+		Get the list of currrently downloading files.
+		"""
+		self.filesinprogresslock.acquire()	
+		try:
+			return self.filesinprogress
+		finally:
+			self.filesinprogresslock.release()
+			
+	@thread_safe
+	def getDownloadingForObject(self, oid):
+		"""\
+		Get the list of files currently downloading for a given object.
+		"""
+		fileurls = []
+		self.filesinprogresslock.acquire()	
+		try:
+			mediaurls = objectutils.getMediaURLs(self.application.cache, oid)
+			for (name, url) in mediaurls.items():
+				filenames = self.GetFilenames(url)
+				for filename in filenames:
+					if filename not in self.filesinprogress:
+						continue
+						
+					fileurls.append(filename)
+			
+			return fileurls
+		finally:
+			self.filesinprogresslock.release()
+
+class FileTrackerMixin:
+	def __init__(self, application):
+		self.application = application
+		self.filesinprogress = set()
+		self.application.gui.Binder(self.application.MediaClass.MediaUpdateEvent, self.OnMediaUpdate)
+		self.application.gui.Binder(self.application.MediaClass.MediaDownloadDoneEvent,	self.OnMediaDownloadDone)
+		self.application.gui.Binder(self.application.MediaClass.MediaDownloadAbortEvent, self.OnMediaDownloadAborted)
+		
+	def AddURL(self, url):
+		self.filesinprogress.add(url)
+	
+	def AddURLsFromBase(self, url):
+		for filename in self.application.media.GetFilenames(url):
+			self.filesinprogress.add(filename)
+	
+	def AddObjectURLs(self, objectid):
+		for filename in self.application.media.getDownloadingForObject(objectid):
+			self.filesinprogress.add(filename)
+	
+	def RemoveURL(self, url):
+		if url in self.filesinprogress:
+			self.filesinprogress.remove(url)
+			
+	def ClearURLs(self):
+		self.filesinprogress = set()
+	
+	def CheckURL(self, url):
+		return url in self.filesinprogress
+		
+	def OnMediaUpdate(self, evt):
+		pass
+	
+	def OnMediaDownloadDone(self, evt):
+		if evt is None:
+			return
+
+		if self.CheckURL(evt.file):
+			self.RemoveURL(evt.file)
+	
+	def OnMediaDownloadAborted(self, evt):
+		if evt is None:
+			self.ClearURLs()
+
+		if self.CheckURL(evt.file):
+			self.RemoveURL(evt.file)
 
 from tp.netlib.discover import LocalBrowser as LocalBrowserB
 from tp.netlib.discover import RemoteBrowser as RemoteBrowserB

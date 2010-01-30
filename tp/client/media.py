@@ -331,6 +331,10 @@ class Media(object):
 		mediatypes is the type of media which the client needs.
 		"""
 		scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
+
+		username = urllib.quote(username)
+		password = urllib.quote(password)
+
 		self.url = scheme + "://" + username + ":" + password + "@" + netloc + path
 		# Make the URL safe for filesystems
 		safeurl = filesafe(url)

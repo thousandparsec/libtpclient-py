@@ -640,6 +640,10 @@ class Cache(object):
 						continue
 
 					value = getattr(getattr(object, group.name), property.name)
+					#Skip if zero (no access)
+					if value.queueid == 0:
+						continue
+
 					# Skip the queues we are already getting
 					if value.queueid in gettingqueues or value.queueid in emptyqueues:
 						continue

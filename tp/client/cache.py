@@ -138,7 +138,7 @@ class Cache(object):
 				CacheEvent.__init__(self, what, *args, **kw)
 
 	# Read Only things can only be updated via the network
-	readonly = ("features", "objects", "orders_probe", "boards", "resources", "components", "properties", "players", "resources")
+	readonly = ("features", "objects", "orderqueues", "orders_probe", "boards", "resources", "components", "properties", "players", "resources")
 	# These can be updated via either side
 	readwrite = ("orders", "messages", "categories", "designs")
 	# How we can update the Cache
@@ -217,6 +217,7 @@ class Cache(object):
 		# The object stuff
 		self.objects		= ChangeDict()
 		self.orders			= ChangeDict()
+		self.orderqueues    = ChangeDict()
 		self.orders_probe	= ChangeDict()
 
 		# The message boards
@@ -467,14 +468,15 @@ class Cache(object):
 		# Get all the objects
 		#############################################################################
 		#############################################################################
-		toget = self.__getObjects(connection,   "objects", callback)
+		self.__getObjects(connection, "objects", callback)
+
+		toget = self.__getObjects(connection, "orderqueues", callback)
 		if toget > 0:
-			#self.__getSubObjects(connection, toget, "objects", "orders", "order_number", callback)
-			self.__getOrders(connection, toget, callback)
+			self.__getSubObjects(connection, toget, "orderqueues",  "orders", "numorders", callback)
 		else:
 			c("orders", "finished", message=_("Don't have any orders to get.."))
 
-		toget = self.__getObjects(connection,   "boards", callback)
+		toget = self.__getObjects(connection, "boards", callback)
 		if toget > 0:
 			self.__getSubObjects(connection, toget, "boards",  "messages", "number", callback)
 		else:
@@ -620,81 +622,6 @@ class Cache(object):
 		c(pn, "finished", message=_("Received all %s...") % pn)
 
 		return toget
-
-	#self.__getSubObjects(connection, toget, "objects", "orders", "order_number", callback)
-	def __getOrders(self, connection, toget, callback=None):
-		callback("orders", "start", message=_("Getting orders..."))
-		callback("orders", "todownload", message=_("Have to get orders for %i objects...") % len(toget), todownload=len(toget))
-
-		# Set the blocking so we can pipeline the requests
-		connection.setblocking(True)
-		gettingqueues = []
-		emptyqueues = []
-		for objectid in toget:
-			object = self.objects[objectid]
-		
-			from tp.netlib.objects.parameters import ObjectParamOrderQueue
-			for group in object.properties:
-				for property in group.structures:
-					if not isinstance(property, ObjectParamOrderQueue):
-						continue
-
-					value = getattr(getattr(object, group.name), property.name)
-					#Skip if zero (no access)
-					if value.queueid == 0:
-						continue
-
-					# Skip the queues we are already getting
-					if value.queueid in gettingqueues or value.queueid in emptyqueues:
-						continue
-
-					if value.numorders > 0:
-						callback("orders", "progress", \
-							message=_("Sending a request for all orders in queue %i on %s...") % (value.queueid, unicode(object.name)))
-						getattr(connection, "get_orders")(value.queueid, range(0, value.numorders))
-						gettingqueues.append((objectid, value.queueid))
-					else:
-						callback("orders", "progress", \
-							message=_("Skipping requesting orders on %s as there are none!") % unicode(object.name))
-						emptyqueues.append((objectid, value.queueid))
-
-		print "Getting data for:"
-		print gettingqueues
-		print "The following where empty:"
-		print emptyqueues
-		
-		for objectid, id in emptyqueues:
-			self.orders[id] = (self.objects[objectid].modify_time, ChangeList())
-
-		# Wait for the response to the order requests
-		while len(gettingqueues) > 0:
-			result = None
-			while result is None:
-				result = connection.poll()
-
-			objectid, queueid = gettingqueues.pop(0)
-			if failed(result):
-				callback("orders", "failure", \
-					message=_("Failed to get orders (id: %s) (%s)...") % (queueid, result[1]))
-				continue
-			else:
-				callback("orders", "downloaded", amount=1, \
-					message=_("Got %i orders (id: %s)...") % (len(result), queueid))
-
-			subs = ChangeList()
-			for sub in result:
-				subs.append(ChangeNode(sub))
-
-			self.orders[queueid] = (self.objects[objectid].modify_time, subs)
-
-		callback("orders", "progress", message=_("Cleaning up any stray orders..."))
-		for id in self.orders.keys():
-			if not self.objects.has_key(id):
-				callback("orders", "progress", message=_("Found stray orders for %s...") % id)
-				del self.orders[id]
-
-		connection.setblocking(False)
-		callback("orders", "finished", message=_("Received all the orders..."))
 
 	def __getSubObjects(self, connection, toget, plural_name, subname, number, callback=None):
 		c = callback

@@ -143,6 +143,7 @@ def getResources(cache, oid):
 			resourcelist = getattr(group, paramlist.name).resources
 			for resource in resourcelist:
 				resources.append(resource)
+
 	return resources
 	
 def getOrderTypes(cache, oid):
@@ -151,15 +152,17 @@ def getOrderTypes(cache, oid):
 	or [] if none. Keyed by order queue ID.
 	"""
 	ordertypes = {}
+
 	obj = cache.objects[oid]
 	for propertygroup in obj.properties:
 		group = getattr(obj, propertygroup.name)
 		
-		for queue in group.structures:
-			if type(queue) != parameters.ObjectParamOrderQueue:
+		for queueparam in group.structures:
+			if type(queueparam) != parameters.ObjectParamOrderQueue:
 				continue
 			
-			ordertypes[getattr(group, queue.name).queueid] = getattr(group, queue.name).ordertypes
+			qid = getattr(group, queueparam.name).queueid
+			ordertypes[qid] = cache.orderqueues[qid].ordertypes
 	return ordertypes
 
 def getOrderQueueList(cache, oid):
@@ -173,11 +176,12 @@ def getOrderQueueList(cache, oid):
 	for propertygroup in obj.properties:
 		group = getattr(obj, propertygroup.name)
 		
-		for queue in group.structures:
-			if type(queue) != parameters.ObjectParamOrderQueue:
+		for queueparam in group.structures:
+			if type(queueparam) != parameters.ObjectParamOrderQueue:
 				continue
 			
-			orderqueuelist.append((queue.name, getattr(group, queue.name).queueid))
+			orderqueuelist.append((queueparam.name, getattr(group, queueparam.name).queueid))
+
 	return orderqueuelist
 
 def getOrderQueueLimit(cache, oid, qid):
@@ -189,11 +193,12 @@ def getOrderQueueLimit(cache, oid, qid):
 	for propertygroup in obj.properties:
 		group = getattr(obj, propertygroup.name)
 		
-		for queue in group.structures:
-			if type(queue) != parameters.ObjectParamOrderQueue:
+		for queueparam in group.structures:
+			if type(queueparam) != parameters.ObjectParamOrderQueue:
 				continue
-			
-			return queue.maxslots
+
+			qid = getattr(group, queueparam.name).queueid
+			return cache.orderqueues[qid].maxslots
 	return -1
 
 def getOwner(cache, oid):

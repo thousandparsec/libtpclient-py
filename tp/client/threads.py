@@ -6,6 +6,8 @@ import time
 import traceback
 from threading import Lock
 
+import objectutils
+
 from media import Media
 
 from config import load_data, save_data
@@ -13,9 +15,6 @@ from version import version
 		
 from tp.netlib.objects import parameters
 from tp.netlib import objects
-from requirements import graphicsdir
-
-from extra import objectutils
 
 def nop(*args, **kw):
 	return

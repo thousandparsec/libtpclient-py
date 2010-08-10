@@ -570,9 +570,10 @@ class Cache(object):
 		# Figure out the IDs to download
 		c(pn, "progess", message=_("Working out the number of %s to get..") % pn)
 		toget = []
-		ids = []
+		ids = set(cache().keys())
+
 		for id, time in getattr(connection, "get_%s_ids" % sn)(iter=True):
-			ids.append(id)
+			ids.add(id)
 			if not cache().has_key(id):
 				c(pn, "info", message=_("%(plural_name)s: Getting %(id)s as not cache().has_key(id)") % {'plural_name': pn, 'id': id})
 				toget.append(id)
@@ -594,7 +595,7 @@ class Cache(object):
 
 		# Download the XXX
 		c(pn, "todownload", \
-			message=_("Have %(ammount)i %(plural_name)s to get...") % {'ammount': len(toget), 'plural_name': pn}, todownload=len(toget))
+			message=_("Have %(amount)i %(plural_name)s to get...") % {'amount': len(toget), 'plural_name': pn}, todownload=len(toget))
 		frames = getattr(connection, "get_%s" % pn)(ids=toget, callback=OnPacket)
 
 		if failed(frames):

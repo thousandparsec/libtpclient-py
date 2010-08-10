@@ -66,7 +66,6 @@ def isTopLevel(cache, oid):
 	# galaxy.
 	for propertygroup in obj.properties:
 		if propertygroup.name != "Positional" and propertygroup.name != "Informational" and propertygroup.name != "Media":
-			print propertygroup.name
 			return False
 	
 	# If it only has a positional property list, it's a galaxy.

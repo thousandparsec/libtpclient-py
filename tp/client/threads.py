@@ -416,16 +416,16 @@ class NetworkThread(CallThread):
 		callback("connecting", "downloaded", _("Got the supported features..."), amount=1)
 
 		callback("connecting", "progress", _("Looking for running games..."))
-		games = self.connection.games()
-		if failed(games):
-			games = []
+		self.games = self.connection.games()
+		if failed(self.games):
+			self.games = []
 		else:
-			for game in games:
+			for game in self.games:
 				callback("connecting", "progress", _("Found %(game)s playing %(ruleset)s (%(version)s)") % {'game': game.name, 'ruleset': game.rule, 'version': game.rulever})
 
 		callback("connecting", "downloaded", _("Got the supported features..."), amount=1)
 
-		self.application.Post(self.NetworkConnectEvent("Connected to %s" % host, features, games))
+		self.application.Post(self.NetworkConnectEvent("Connected to %s" % host, features, self.games))
 		return 
 
 	def ConnectTo(self, host, username, password, debug=False, callback=nop, cs="unknown"):
@@ -447,7 +447,8 @@ class NetworkThread(CallThread):
 			callback("connecting", "downloaded", _("Logged in okay!"), amount=1)
 
 			# Create a new cache
-			self.application.cache = self.application.CacheClass(self.application.CacheClass.key(host, username))
+			# FIXME: This should choose the actual game we are connecting too.
+			self.application.cache = self.application.CacheClass(self.application.CacheClass.key(host, self.games[0], username))
 			return True
 		finally:
 			callback("connecting", "finished", "")

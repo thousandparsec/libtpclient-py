@@ -149,7 +149,7 @@ class Cache(object):
 	compound = ("orders", "messages")
 
 	@staticmethod
-	def key(server, username):
+	def key(server, game, username):
 		key = server
 
 		p = ['tp://', 'tps://', 'http://', 'https://']
@@ -162,7 +162,7 @@ class Cache(object):
 			key = 'tp://' + key
 		if key.find('@') == -1:
 			p, s = key.split('//', 1)
-			key = "%s//%s@%s" % (p, username, s)
+			key = "%s//%s@%s(%s)" % (p, username, s, game.ctime)
 		return key
 
 	@staticmethod

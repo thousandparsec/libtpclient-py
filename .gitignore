@@ -6,3 +6,4 @@ MANIFEST
 libtpclient_py.egg-info
 build-stamp
 html
+*.swp

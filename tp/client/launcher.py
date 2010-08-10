@@ -34,6 +34,7 @@ class Launcher(threading.Thread):
 		@type onexit: C{function}
 		"""
 		threading.Thread.__init__(self)
+		self.setDaemon(True)
 
 		# Check the program we are going to start exists
 		self.torun = torun.split()

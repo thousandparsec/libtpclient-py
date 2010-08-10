@@ -134,9 +134,6 @@ class Application(object):
 		self.finder.Post(event)
 		self.media.Post(event)
 
-		#print "Post", event, event.source
-		#import traceback
-		#traceback.print_stack()
 		self.gui.Call(self.gui.Post, event)
 
 	def Exit(self, *args, **kw):
@@ -172,6 +169,7 @@ class CallThread(threading.Thread):
 
 	def __init__(self):
 		threading.Thread.__init__(self, name=self.name)
+		self.setDaemon(True)
 		self.exit = False
 		self.reset = False
 		self.tocall = []
@@ -565,6 +563,7 @@ class DownloaderThread(threading.Thread):
 	
 	def __init__(self, file, callback, finishedcallback, parent, cache, application):
 		threading.Thread.__init__(self)
+		self.setDaemon(True)
 		self.file = file
 		self.finishedcallback = finishedcallback
 		self.callback = callback
@@ -936,6 +935,7 @@ class LocalBrowser(LocalBrowserB, threading.Thread):
 
 	def __init__(self, *args, **kw):
 		threading.Thread.__init__(self, name=self.name)
+		self.setDaemon(True)
 		LocalBrowserB.__init__(self, *args, **kw)
 
 class RemoteBrowser(RemoteBrowserB, threading.Thread):
@@ -943,6 +943,7 @@ class RemoteBrowser(RemoteBrowserB, threading.Thread):
 
 	def __init__(self, *args, **kw):
 		threading.Thread.__init__(self, name=self.name)
+		self.setDaemon(True)
 		RemoteBrowserB.__init__(self, *args, **kw)
 	
 class FinderThread(CallThread):

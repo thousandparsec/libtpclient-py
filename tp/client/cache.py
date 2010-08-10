@@ -11,7 +11,7 @@ import traceback
 if sys.platform == "darwin":
 	import pickle as pickle
 else:
-	import cPickle as pickle
+	import pickle as pickle
 from datetime import datetime
 
 def df(time):
@@ -29,7 +29,9 @@ except NameError:
 
 # Other library imports
 from tp.netlib import Connection, failed, constants, objects
-from tp.netlib.objects import Header, Description, OrderDescs, DynamicBaseOrder
+from tp.netlib.objects import Header, Description
+from tp.netlib.objects import OrderDescs, DynamicBaseOrder
+from tp.netlib.objects import ObjectDescs, DynamicBaseObject
 
 # Local imports
 # FIXME: Should I think about merging the ChangeList and ChangeDict?
@@ -48,7 +50,7 @@ class Cache(object):
 	"""
 	__metaclass__ = thread_checker
 
-	version = 6
+	version = 7
 
 	class CacheEvent(Event):
 		"""\
@@ -327,9 +329,21 @@ class Cache(object):
 		if v != self.version:
 			raise IOError("The cache is not of this version! (It's version %s)" % (v,))
 
-		orderdescs, = struct.unpack('!I', f.read(4))
+		# Now load the object cache
+		objectdescs, = struct.unpack('!I', f.read(4))
+		for i in xrange(0, objectdescs):
+			d = f.read(Header.size)
+
+			p = Header.fromstr(d)
+
+			d = f.read(p.length)
+			p.__process__(d)
+			
+			assert isinstance(p, Description)
+			p.register()
 
 		# Now load the order cache
+		orderdescs, = struct.unpack('!I', f.read(4))
 		for i in xrange(0, orderdescs):
 			d = f.read(Header.size)
 			p = Header.fromstr(d)
@@ -351,6 +365,9 @@ class Cache(object):
 					pending.__class__ = OrderDescs()[pending.subtype]
 				node._what.__class__ = OrderDescs()[node._what.subtype]
 
+		for node in d['objects'].values():
+			node.__class__ = ObjectDescs()[node.subtype]
+
 		self.__dict__.update(d)
 
 	def save(self):
@@ -364,9 +381,14 @@ class Cache(object):
 		f = open(file, 'wb')
 		f.write(struct.pack('!I', self.version))
 
+		# Save each dynamic object description
+		descriptions = ObjectDescs()
+		f.write(struct.pack('!I', len(descriptions)))
+		for objectdesc in descriptions.values():
+			f.write(str(objectdesc.packet))
+	
 		# Save each dynamic order description
 		descriptions = OrderDescs()
-
 		f.write(struct.pack('!I', len(descriptions)))
 		for orderdesc in descriptions.values():
 			f.write(str(orderdesc.packet))
@@ -375,6 +397,11 @@ class Cache(object):
 		del p['_thread']
 
 		# Stop referencing the dynamic orders
+		for node in p['objects'].values():
+			subtype = node.subtype
+			node.__class__ = DynamicBaseObject
+			node.subtype = subtype
+
 		for clist in p['orders'].values():
 			for node in clist:
 				for pending in node._pending:
@@ -386,7 +413,7 @@ class Cache(object):
 				node._what.__class__ = DynamicBaseOrder
 				node._what.subtype = subtype
 
-		#pickle.dump(p, f)
+		pickle.dump(p, f)
 
 		# FIXME: The above copy should not be mutating!
 		for clist in p['orders'].values():
@@ -394,6 +421,9 @@ class Cache(object):
 				for pending in node._pending:
 					pending.__class__ = OrderDescs()[pending.subtype]
 				node._what.__class__ = OrderDescs()[node._what.subtype]
+
+		for node in p['objects'].values():
+			node.__class__ = ObjectDescs()[node.subtype]
 			
 		f.close()
 

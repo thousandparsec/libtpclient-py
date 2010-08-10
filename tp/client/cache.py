@@ -518,34 +518,10 @@ class Cache(object):
 		self.__getObjects(connection, "designs",    callback)
 		self.__getObjects(connection, "components", callback)
 		self.__getObjects(connection, "properties", callback)
-#		self.__getObjects(connection, "players",    callback)
+		self.__getObjects(connection, "players",    callback)
 		self.__getObjects(connection, "resources",  callback)
 
-		c("players", "start", message=_("Getting player objects..."))
-
-		playerids = self.players.keys()
-		if len(playerids) > 0:
-			playerids.sort()
-			i = playerids[-1]+1
-		else:
-			i = 0
-
-		while True:
-			player = connection.get_players(i)
-
-			if failed(player):
-				break
-			else:
-				self.players[i] = player[0]
-
-			c("players", "downloaded", amount=1, \
-				message=_("Got player %(player)s (ID: %(id)i)...") % {'player': player[0].name, 'id': player[0].id})
-
-			i += 1
-
-		c("players", "finished", message=_("Received all player objects..."))
-		
-#		self.players[0] = connection.get_players(0)[0]
+		self.players[0] = connection.get_players(0)[0]
 
 	def __getObjects(self, connection, plural_name, callback):
 		"""\
@@ -593,7 +569,7 @@ class Cache(object):
 
 		if len(toget) < 1:
 			c(pn, "finished", message=_("No %s to get, skipping...") % pn)
-			return 0
+			return []
 
 		# Download the XXX
 		c(pn, "todownload", \

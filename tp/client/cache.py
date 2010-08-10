@@ -575,7 +575,7 @@ class Cache(object):
 		for id, time in getattr(connection, "get_%s_ids" % sn)(iter=True):
 			ids.add(id)
 			if not cache().has_key(id):
-				c(pn, "info", message=_("%(plural_name)s: Getting %(id)s as not cache().has_key(id)") % {'plural_name': pn, 'id': id})
+				c(pn, "info", message=_("%(plural_name)s: Getting new object with %(id)s.") % {'plural_name': pn, 'id': id})
 				toget.append(id)
 			elif time > cache().times[id]:
 				c(pn, "info", message=_("%(plural_name)s: Getting %(id)s (%(name)s) as %(time)s > %(cached_time)s") % {'plural_name': pn, 'id': id, 'name': cache(id).name, 'time': time, 'cached_time': cache().times[id]})
@@ -614,10 +614,10 @@ class Cache(object):
 			else:
 				if cache().has_key(id):
 					c(pn, "failure", \
-						message=_("Failed to get the %(singular_name)s which was previously called %(name)s.") % {'singular_name': sn, 'name': cache(id).name})
+						message=_("Failed to get the %(singular_name)s which was previously called %(name)s. (%(error)s)") % {'singular_name': sn, 'name': cache(id).name, 'error': frame[-1]})
 				else:
 					c(pn, "failure", \
-						message=_("Failed to get the %(singular_name)s with ID %(id)s.") % {'singular_name': sn, 'id': id})
+						message=_("Failed to get the %(singular_name)s with ID %(id)s. (%(error)s)") % {'singular_name': sn, 'id': id, 'error': frame[-1]})
 
 				# Don't get any sub-objects for this 
 				toget.remove(id)

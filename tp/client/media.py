@@ -332,8 +332,8 @@ class Media(object):
 		"""
 		scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
 
-		username = urllib.quote(username)
-		password = urllib.quote(password)
+		username = urllib.quote(username.encode('utf-8'))
+		password = urllib.quote(password.encode('utf-8'))
 
 		self.url = scheme + "://" + username + ":" + password + "@" + netloc + path
 		# Make the URL safe for filesystems

@@ -167,7 +167,9 @@ class Cache(object):
 
 	@staticmethod
 	def configkey(key):
-		key = base64.encodestring(key)[:-2]
+		if isinstance(key, unicode):
+			key = key.encode('utf-8')
+		key = base64.encodestring(key)[:-2].replace('/', '')
 		return key
 
 	@staticmethod
@@ -336,7 +338,7 @@ class Cache(object):
 
 			p = Header.fromstr(d)
 
-			d = f.read(p.length)
+			d = f.read(p._length)
 			p.__process__(d)
 			
 			assert isinstance(p, Description)
@@ -348,7 +350,7 @@ class Cache(object):
 			d = f.read(Header.size)
 			p = Header.fromstr(d)
 
-			d = f.read(p.length)
+			d = f.read(p._length)
 			p.__process__(d)
 
 			assert isinstance(p, Description)

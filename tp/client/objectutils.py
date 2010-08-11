@@ -283,3 +283,16 @@ def getIconURLs(application, oid):
 			iconurls.append(filename)
 			
 	return iconurls
+
+def findChildren(tmpcache, oid):
+	"""
+	Figure out all the children of this object.
+	"""
+	obj = tmpcache.objects[oid]
+
+	kids = set()
+	for cid in obj.contains:
+		kids.update(findChildren(tmpcache, cid))
+		kids.add(cid)
+
+	return list(kids)

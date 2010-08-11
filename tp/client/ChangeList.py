@@ -275,6 +275,9 @@ class ChangeList(object):
 		ins.right = after
 
 	def insert_before(self, node, ins):
+		if node == self.head:
+			raise "Can't insert before head"
+
 		before = node.left
 		after  = node
 

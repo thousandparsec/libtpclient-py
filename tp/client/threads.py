@@ -357,7 +357,6 @@ class NetworkThread(CallThread):
 		except (AttributeError, KeyError), e:
 			print e
 
-
 	def error(self, error):
 		traceback.print_exc()
 		if isinstance(error, (IOError, socket.error)):
@@ -454,11 +453,21 @@ class NetworkThread(CallThread):
 		finally:
 			callback("connecting", "finished", "")
 
+	def GetTimeRemaining(self):
+		frame = self.connection.time()
+		print "Frame", repr(frame), frame.waiting
+		if failed(frame):
+			print "GetTimeRemaining failed!"
+			return
+		self.application.Post(self.NetworkTimeRemainingEvent(frame))
+
 	def CacheUpdate(self, callback):
 		try:
 			callback("connecting", "alreadydone", "Already connected to the server!")
 			self.application.cache.update(self.connection, callback)
 			self.application.cache.save()
+
+			self.GetTimeRemaining()
 		except ThreadStop, e:
 			pass
 		except Exception, e:
@@ -471,13 +480,11 @@ class NetworkThread(CallThread):
 				pass
 
 		try:
-			if not hasattr(self.connection, "turnfinished"):
-				print "Was unable to request turnfinished."
-				return
-
 			if failed(self.connection.turnfinished()):
 				print "The request for end of turn failed."
 				return
+
+			self.GetTimeRemaining()
 		except Exception, e:
 			print e
 

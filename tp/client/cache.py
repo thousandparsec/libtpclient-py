@@ -295,7 +295,7 @@ class Cache(object):
 
 		if not evt.what in Cache.compound:
 			if evt.action == "create" or evt.action == "change":
-				getattr(self, evt.what)[evt.id] = (-1, evt.change)
+				getattr(self, evt.what)[evt.id] = (evt.change.modify_time, evt.change)
 			elif evt.action == "remove":
 				del getattr(self, evt.what)[evt.id]
 
@@ -766,8 +766,8 @@ def apply(connection, evt, cache):
 			if failed(result):
 				raise IOError("Unable to add the design...")
 			
-			# Need to update the event with the new ID of the design.
 			evt.id = result.id
+			evt.change = result
 
 	elif evt.what == "categories":
 
@@ -783,8 +783,8 @@ def apply(connection, evt, cache):
 			if failed(result):
 				raise IOError("Unable to add the category...")
 			
-			# Need to update the event with the new ID of the design.
 			evt.id = result.id
+			evt.change = result
 	else:
 		raise ValueError("Can't deal with that yet!")
 

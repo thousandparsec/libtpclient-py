@@ -30,7 +30,7 @@ def getPositionList(obj):
 				positionslist.append((coords.x, coords.y, coords.z, property.name))
 				continue
 				
-			refpositions = get_position_list(cache.objects[relative])
+			refpositions = getPositionList(cache.objects[relative])
 			
 			if refpositions == []:
 				raise ValueError("Reference object for coordinates does not have a position.")
@@ -39,6 +39,39 @@ def getPositionList(obj):
 			positionslist.append((coords.x + refpositions[0][0], coords.y + refpositions[0][1], coords.z + refpositions[0][2], property.name))
 				
 	return positionslist
+
+def getVelocityList(obj):
+	"""
+	Get a list of the position references of a DynamicObject as tuples.
+	Each tuple has the form: (x, y, z, coord name)
+	"""
+	velocitylist = []
+	for propertygroup in obj.properties:
+		if type(propertygroup) != Structures.GroupStructure:
+			continue
+			
+		velocityattrsstruct = getattr(obj, propertygroup.name)
+		for property in propertygroup.structures:
+			if type(property) != parameters.ObjectParamVelocity3d:
+				continue
+			
+			coords = getattr(velocityattrsstruct, property.name).vector
+			relative = getattr(velocityattrsstruct, property.name).relative
+			
+			if relative == 0:
+				velocitylist.append((coords.x, coords.y, coords.z, property.name))
+				continue
+				
+			refvelocity = getVelocityList(cache.objects[relative])
+			
+			if refvelocity == []:
+				raise ValueError("Reference object for coordinates does not have a velocity.")
+				continue
+			
+			velocitylist.append((coords.x + refvelocity[0][0], coords.y + refvelocity[0][1], coords.z + refvelocity[0][2], property.name))
+				
+	return velocitylist
+
 	
 def isTopLevel(cache, oid):
 	"""

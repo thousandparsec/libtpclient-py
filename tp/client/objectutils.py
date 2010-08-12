@@ -1,8 +1,9 @@
 """\
 This file contains functions used to deal with objects.
 """
-from tp.netlib.objects			  			  import Structures
-from tp.netlib.objects						  import parameters
+from tp.netlib.objects import Structures
+from tp.netlib.objects import ObjectDescs
+from tp.netlib.objects import parameters
 from tp.netlib import objects
 from tp.netlib import GenericRS
 #from tp.netlib.objects import OrderDescs
@@ -103,6 +104,38 @@ def canObjectMove(cache, oid):
 					return True
 
 	return False
+
+def possibleInfluences(cache):
+	influences = set()
+	for objectdesc in ObjectDescs().values():
+		for group in objectdesc.properties:
+			for structure in group.structures:
+				if isinstance(structure, parameters.ObjectParamInfluence):
+					influences.add(((group.name, structure.name), structure.description))
+	return list(influences)
+
+
+def getInfluence(cache, oid, name):
+	"""
+	Returns true if this object has resources.
+	"""
+	obj = cache.objects[oid]
+	
+	for propertygroup in obj.properties:
+		if propertygroup.name != name[0]:
+			continue
+
+		group = getattr(obj, propertygroup.name)
+		
+		for paramlist in group.structures:
+			if type(paramlist) != parameters.ObjectParamInfluence:
+				continue
+			
+			if paramlist.name == name[1]:
+				return getattr(group, paramlist.name).diameter
+	
+	return False
+
 
 def hasResources(cache, oid):
 	"""

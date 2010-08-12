@@ -503,13 +503,13 @@ class Cache(object):
 		self.__getObjects(connection, "objects", callback)
 
 		toget = self.__getObjects(connection, "orderqueues", callback)
-		if toget > 0:
+		if len(toget) > 0:
 			self.__getSubObjects(connection, toget, "orderqueues",  "orders", "numorders", callback)
 		else:
 			c("orders", "finished", message=_("Don't have any orders to get.."))
 
 		toget = self.__getObjects(connection, "boards", callback)
-		if toget > 0:
+		if len(toget) > 0:
 			self.__getSubObjects(connection, toget, "boards",  "messages", "number", callback)
 		else:
 			c("messages", "finished", message=_("Don't have any messages to get.."))
@@ -548,10 +548,10 @@ class Cache(object):
 		# Figure out the IDs to download
 		c(pn, "progess", message=_("Working out the number of %s to get..") % pn)
 		toget = []
-		ids = set(cache().keys())
+		ids = []
 
 		for id, time in getattr(connection, "get_%s_ids" % sn)(iter=True):
-			ids.add(id)
+			ids.append(id)
 			if not cache().has_key(id):
 				c(pn, "info", message=_("%(plural_name)s: Getting new object with %(id)s.") % {'plural_name': pn, 'id': id})
 				toget.append(id)
@@ -567,41 +567,38 @@ class Cache(object):
 				c(pn, "downloaded", amount=1, \
 					message=_("Got %(singular_name)s %(name)s (ID: %(id)i) (last modified at %(time)s)...") % {'singular_name': sn, 'name': p.name, 'id': p.id, 'time': p.modify_time})
 
-		if len(toget) < 1:
-			c(pn, "finished", message=_("No %s to get, skipping...") % pn)
-			return []
+		if len(toget) > 0:
+			# Download the XXX
+			c(pn, "todownload", \
+				message=_("Have %(amount)i %(plural_name)s to get...") % {'amount': len(toget), 'plural_name': pn}, todownload=len(toget))
+			frames = getattr(connection, "get_%s" % pn)(ids=toget, callback=OnPacket)
 
-		# Download the XXX
-		c(pn, "todownload", \
-			message=_("Have %(amount)i %(plural_name)s to get...") % {'amount': len(toget), 'plural_name': pn}, todownload=len(toget))
-		frames = getattr(connection, "get_%s" % pn)(ids=toget, callback=OnPacket)
+			if failed(frames):
+				raise IOError("Strange error occured, unable to request %s." % pn)
 
-		if failed(frames):
-			raise IOError("Strange error occured, unable to request %s." % pn)
-
-		# Match the results to the associated ids
-		for id, frame in zip(toget, frames):
-			if not failed(frame):
-				if cache().has_key(id):
-					c(pn, "info", \
-						message=_("%(plural_name)s: Updating %(id)s (%(name)s - %(frame_name)s) with modtime %(time)s") % {'plural_name': pn, 'id': id, 'name': cache(id).name, 'frame_name': frame.name, 'time': frame.modify_time})
+			# Match the results to the associated ids
+			for id, frame in zip(toget, frames):
+				if not failed(frame):
+					if cache().has_key(id):
+						c(pn, "info", \
+							message=_("%(plural_name)s: Updating %(id)s (%(name)s - %(frame_name)s) with modtime %(time)s") % {'plural_name': pn, 'id': id, 'name': cache(id).name, 'frame_name': frame.name, 'time': frame.modify_time})
+					else:
+						c(pn, "info", \
+							message=_("%(plural_name)s: Updating %(id)s (%(frame_name)s - New!) with modtime %(time)s") % {'plural_name': pn, 'id': id, 'frame_name': frame.name, 'time': frame.modify_time})
+					cache()[id] = (frame.modify_time, frame)
 				else:
-					c(pn, "info", \
-						message=_("%(plural_name)s: Updating %(id)s (%(frame_name)s - New!) with modtime %(time)s") % {'plural_name': pn, 'id': id, 'frame_name': frame.name, 'time': frame.modify_time})
-				cache()[id] = (frame.modify_time, frame)
-			else:
-				if cache().has_key(id):
-					c(pn, "failure", \
-						message=_("Failed to get the %(singular_name)s which was previously called %(name)s. (%(error)s)") % {'singular_name': sn, 'name': cache(id).name, 'error': frame[-1]})
-				else:
-					c(pn, "failure", \
-						message=_("Failed to get the %(singular_name)s with ID %(id)s. (%(error)s)") % {'singular_name': sn, 'id': id, 'error': frame[-1]})
+					if cache().has_key(id):
+						c(pn, "failure", \
+							message=_("Failed to get the %(singular_name)s which was previously called %(name)s. (%(error)s)") % {'singular_name': sn, 'name': cache(id).name, 'error': frame[-1]})
+					else:
+						c(pn, "failure", \
+							message=_("Failed to get the %(singular_name)s with ID %(id)s. (%(error)s)") % {'singular_name': sn, 'id': id, 'error': frame[-1]})
 
-				# Don't get any sub-objects for this 
-				toget.remove(id)
+					# Don't get any sub-objects for this 
+					toget.remove(id)
 
-				# This object does not really exist on the server
-				ids.remove(id)
+					# This object does not really exist on the server
+					ids.remove(id)
 
 		c(pn, "progress", message=_("Cleaning up %s which have disappeared...") % pn)
 

@@ -570,6 +570,9 @@ class SinglePlayerGame:
 		port = s.getsockname()[1]
 		s.close()
 
+		# calculate the amount of players so the server can wait for them
+		numplayers = len(self.opponents) + 1
+
 		try:
 			# start server
 			server = self.locallist['server'][self.sname]
@@ -593,6 +596,7 @@ class SinglePlayerGame:
 			servercmd = servercmd % {
 						'rname' : self.rname,
 						'port' : port,
+						'numplayers' : numplayers,
 					}
 
 			# start server - add regular parameters to command line

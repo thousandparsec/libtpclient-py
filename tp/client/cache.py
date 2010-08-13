@@ -726,12 +726,16 @@ def apply(connection, evt, cache):
 
 			assert not evt.change.CurrentState == "idle"
 			assert not evt.change.PendingOrder is None
-			if failed(connection.insert_order(evt.id, slot, evt.change.PendingOrder)):
-				raise IOError("Unable to insert the order...")
+
+			o = connection.insert_order(evt.id, slot, evt.change.PendingOrder)
+			if failed(o):
+				raise IOError("Unable to insert the order (%r) in queue %s at slot %s - %s" % (
+					evt.change.PendingOrder, evt.id, slot, o[1]))
 
 			o = connection.get_orders(evt.id, slot)[0]
 			if failed(o):
-				raise IOError("Unable to get the order..." + o[1])
+				raise IOError("Unable to get the new order (%r) in queue %s at slot %s - %s" % (
+					evt.change.PendingOrder, evt.id, slot, o[1]))
 
 			evt.change.UpdatePending(o)
 

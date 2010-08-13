@@ -727,6 +727,8 @@ def apply(connection, evt, cache):
 			assert not evt.change.CurrentState == "idle"
 			assert not evt.change.PendingOrder is None
 
+			#assert evt.change.PendingOrder.subtype in cache.orderqueues[evt.id].ordertypes
+
 			o = connection.insert_order(evt.id, slot, evt.change.PendingOrder)
 			if failed(o):
 				raise IOError("Unable to insert the order (%r) in queue %s at slot %s - %s" % (

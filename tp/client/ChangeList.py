@@ -6,6 +6,8 @@ problems associated with the evil slot interface we use in Thousand Parsec.
 
 """
 
+import copy
+import pickle
 
 class ChangeNode(object):
 	NodeCounter = 0
@@ -155,6 +157,29 @@ class ChangeList(object):
 			node = node.right
 		raise KeyError("No node exists with id %s" % id)
 
+	def __getstate__(self):
+		l = []
+		for i in self:
+			l.append(copy.copy(i))
+			l[-1].left = None
+			l[-1].right = None	
+
+		return pickle.dumps(l)
+
+	def __setstate__(self, args):
+		args = pickle.loads(args)
+
+		head = ChangeHead()
+		node = head
+
+		while len(args) > 0:
+			node.right = args.pop()
+			node.right.left = node
+
+			node = node.right
+
+		self.head = head
+
 	def __delitem__(self, id):
 		node = self[id]
 
@@ -173,7 +198,7 @@ class ChangeList(object):
 
 	def __len__(self):
 		l = 0
-		
+	
 		node = self.head.right
 		while node != None:
 			l += 1

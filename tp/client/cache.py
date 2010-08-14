@@ -50,7 +50,7 @@ class Cache(object):
 	"""
 	__metaclass__ = thread_checker
 
-	version = 7
+	version = 8
 
 	class CacheEvent(Event):
 		"""\
